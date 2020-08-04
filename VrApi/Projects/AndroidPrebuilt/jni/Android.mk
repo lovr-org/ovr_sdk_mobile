@@ -16,7 +16,6 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := vrapi
 
-
 LOCAL_SRC_FILES := ../../../Libs/Android/$(TARGET_ARCH_ABI)/$(BUILDTYPE)/lib$(LOCAL_MODULE).so
 
 # only export public headers

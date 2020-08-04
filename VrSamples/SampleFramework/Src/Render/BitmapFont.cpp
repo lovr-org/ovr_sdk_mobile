@@ -445,6 +445,7 @@ typedef unsigned short fontIndex_t;
 //==============================
 // ftoi
 #if defined(OVR_CPU_X86_64)
+#include <xmmintrin.h>
 inline int ftoi(float const f) {
     return _mm_cvtt_ss2si(_mm_set_ss(f));
 }

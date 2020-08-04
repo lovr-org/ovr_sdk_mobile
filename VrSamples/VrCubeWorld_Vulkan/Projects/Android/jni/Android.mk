@@ -9,7 +9,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE			:= vrcubeworldvk
 LOCAL_CFLAGS			:= -std=c99 -Werror
 
-
 LOCAL_SRC_FILES			:= 	../../../Src/VrCubeWorld_Vulkan.c \
 							../../../Src/Framework_Vulkan.c
 

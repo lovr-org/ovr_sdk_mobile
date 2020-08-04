@@ -76,6 +76,16 @@ class GlGeometry {
 
     static unsigned IndexType; // GL_UNSIGNED_SHORT, GL_UNSIGNED_INT, etc.
 
+    class TransformScope {
+       public:
+        TransformScope(const OVR::Matrix4f m, bool enableTransfom = true);
+        ~TransformScope();
+
+       private:
+        OVR::Matrix4f previousTransform;
+        bool wasEnabled;
+    };
+
    public:
     unsigned vertexBuffer;
     unsigned indexBuffer;

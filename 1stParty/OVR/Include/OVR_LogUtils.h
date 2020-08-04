@@ -122,7 +122,9 @@ inline void LogWithFileTag(const int prio, const char* fileTag, const char* fmt,
         if (formattedMsg == nullptr) {
             __android_log_write(prio, strippedTag, "ERROR: out of memory allocating log message!");
         } else {
+            va_copy(ap2, ap);
             vsnprintf(formattedMsg, 512U, fmt, ap2);
+            va_end(ap2);
             __android_log_assert("FAIL", strippedTag, "%s", formattedMsg);
             free(formattedMsg);
         }
@@ -137,7 +139,7 @@ inline void LogWithFileTag(const int prio, const char* fileTag, const char* fmt,
         if (formattedMsg == nullptr) {
             __android_log_write(prio, strippedTag, "ERROR: out of memory allocating log message!");
         } else {
-            vsnprintf(formattedMsg, loglen + 1, fmt, ap2);
+            vsnprintf(formattedMsg, loglen + 1, fmt, ap);
             __android_log_write(prio, strippedTag, formattedMsg);
             free(formattedMsg);
         }

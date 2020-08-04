@@ -1298,6 +1298,7 @@ enum ovrBackgroundType {
     BACKGROUND_NONE,
     BACKGROUND_CUBEMAP,
     BACKGROUND_EQUIRECT,
+    BACKGROUND_LOCAL_EQUIRECT,
     MAX_BACKGROUND_TYPES
 };
 
@@ -1350,7 +1351,7 @@ static void ovrScene_DestroyVAOs(ovrScene* scene) {
     }
 }
 
-static void ovrScene_Create(ovrScene* scene) {
+static void ovrScene_Create(ovrScene* scene, bool permissionsGranted) {
     // Simple ground plane geometry.
     {
         ovrProgram_Create(&scene->Program, VERTEX_SHADER, FRAGMENT_SHADER);
@@ -1359,7 +1360,8 @@ static void ovrScene_Create(ovrScene* scene) {
     }
 
     // Simple cubemap loaded from ktx file on the sdcard.
-    {
+    // Verify sdcard read permission granted before accessing.
+    if (permissionsGranted) {
         scene->CubeMapSwapChain =
             ovrTextureSwapChain_CreateFromKTX("/sdcard/oculus/cubemap1536.ktx");
     }
@@ -1578,6 +1580,37 @@ static ovrLayerEquirect2 BuildEquirectLayer(
 
     layer.TexCoordsFromTanAngles = ovrMatrix4f_CreateIdentity();
     for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+        layer.Textures[eye].ColorSwapChain = equirectSwapChain;
+        layer.Textures[eye].SwapChainIndex = 0;
+    }
+
+    return layer;
+}
+
+static ovrLayerEquirect3 BuildLocalEquirectLayer(
+    ovrTextureSwapChain* equirectSwapChain,
+    const ovrTracking2* tracking) {
+    ovrLayerEquirect3 layer = vrapi_DefaultLayerEquirect3();
+
+    const float radius = 1.5; // 1.5 m radius
+
+    layer.HeadPose = tracking->HeadPose;
+    ovrPosef pose = {};
+    pose.Position.x = 0.0f;
+    pose.Position.y = 0.0f;
+    pose.Position.z = -2.0f;
+    pose.Orientation.x = 0.0f;
+    pose.Orientation.y = 0.0f;
+    pose.Orientation.z = 0.0f;
+    pose.Orientation.w = 1.0f;
+    const ovrMatrix4f poseM = vrapi_GetTransformFromPose(&pose);
+
+    for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+        const ovrMatrix4f modelViewMatrix =
+            ovrMatrix4f_Multiply(&tracking->Eye[eye].ViewMatrix, &poseM);
+        ovrMatrix4f tex_coords_matrix = ovrMatrix4f_Inverse(&modelViewMatrix);
+        tex_coords_matrix.M[3][3] = radius;
+        layer.Textures[eye].TexCoordsFromTanAngles = tex_coords_matrix;
         layer.Textures[eye].ColorSwapChain = equirectSwapChain;
         layer.Textures[eye].SwapChainIndex = 0;
     }
@@ -1819,15 +1852,6 @@ static void ovrApp_HandleInput(ovrApp* app) {
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_A;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Trigger;
             }
-        } else if (cap.Type == ovrControllerType_Gamepad) {
-            ovrInputStateGamepad gamepadState;
-            gamepadState.Header.ControllerType = ovrControllerType_Gamepad;
-            result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &gamepadState.Header);
-            if (result == ovrSuccess) {
-                backButtonDownThisFrame |= ((gamepadState.Buttons & ovrButton_Back) != 0) ||
-                    ((gamepadState.Buttons & ovrButton_B) != 0);
-                touchPadDownThisFrame |= gamepadState.Buttons & ovrButton_A;
-            }
         }
     }
 
@@ -2035,12 +2059,12 @@ void android_main(struct android_app* app) {
 
         // Create the scene if not yet created.
         // The scene is created here to be able to show a loading icon.
-        if (permissionsGrantedFromJava && !ovrScene_IsCreated(&appState.Scene)) {
+        if (!ovrScene_IsCreated(&appState.Scene)) {
             // Show a loading icon.
             ovrApp_RenderLoadingIcon(&appState);
 
             // Create the scene.
-            ovrScene_Create(&appState.Scene);
+            ovrScene_Create(&appState.Scene, permissionsGrantedFromJava != 0);
         }
 
         // This is the only place the frame index is incremented, right before
@@ -2076,6 +2100,9 @@ void android_main(struct android_app* app) {
         } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
             appState.Layers[appState.LayerCount++].Equirect =
                 BuildEquirectLayer(appState.Scene.EquirectSwapChain, &tracking);
+        } else if (appState.Scene.BackGroundType == BACKGROUND_LOCAL_EQUIRECT) {
+            appState.Layers[appState.LayerCount++].Equirect3 =
+                BuildLocalEquirectLayer(appState.Scene.EquirectSwapChain, &tracking);
         }
 
         // Render the world-view layer (simple ground plane)

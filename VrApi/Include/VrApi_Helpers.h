@@ -743,6 +743,10 @@ static inline ovrLayerProjection2 vrapi_DefaultLayerProjection2() {
     return layer;
 }
 
+//-----------------------------------------------------------------
+// Layer Types - default initialization.
+//-----------------------------------------------------------------
+
 static inline ovrLayerProjection2 vrapi_DefaultLayerBlackProjection2() {
     ovrLayerProjection2 layer = {};
 
@@ -879,6 +883,40 @@ static inline ovrLayerEquirect2 vrapi_DefaultLayerEquirect2() {
     return layer;
 }
 
+static inline ovrLayerEquirect3 vrapi_DefaultLayerEquirect3() {
+    ovrLayerEquirect3 layer = {};
+
+    layer.Header.Type = VRAPI_LAYER_TYPE_EQUIRECT3;
+    layer.Header.Flags = 0;
+    layer.Header.ColorScale.x = 1.0f;
+    layer.Header.ColorScale.y = 1.0f;
+    layer.Header.ColorScale.z = 1.0f;
+    layer.Header.ColorScale.w = 1.0f;
+    layer.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
+    layer.Header.DstBlend = VRAPI_FRAME_LAYER_BLEND_ZERO;
+    layer.Header.Reserved = NULL;
+
+    layer.HeadPose.Pose.Orientation.w = 1.0f;
+
+    for (int i = 0; i < VRAPI_FRAME_LAYER_EYE_MAX; i++) {
+        layer.Textures[i].TexCoordsFromTanAngles = ovrMatrix4f_CreateIdentity();
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][0] = 0.0f; // center translation, X
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][1] = 0.0f; // center translation, Y
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][2] = 0.0f; // center translation, Z
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][3] = 0.0f; // radius, infinity
+        layer.Textures[i].TextureRect.x = 0.0f;
+        layer.Textures[i].TextureRect.y = 0.0f;
+        layer.Textures[i].TextureRect.width = 1.0f;
+        layer.Textures[i].TextureRect.height = 1.0f;
+        layer.Textures[i].TextureMatrix.M[0][0] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[1][1] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[2][2] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[3][3] = 1.0f;
+    }
+
+    return layer;
+}
+
 static inline ovrLayerLoadingIcon2 vrapi_DefaultLayerLoadingIcon2() {
     ovrLayerLoadingIcon2 layer = {};
 
@@ -935,6 +973,7 @@ static inline ovrLayerFishEye2 vrapi_DefaultLayerFishEye2() {
 
     return layer;
 }
+
 
 
 //-----------------------------------------------------------------

@@ -176,23 +176,9 @@ typedef enum ovrDeviceType_ {
     
     
     
+    
     VRAPI_DEVICE_TYPE_UNKNOWN = -1,
 } ovrDeviceType;
-
-/// A headset, which typically includes optics and tracking hardware, but not necessarily the device
-/// itself.
-typedef enum ovrHeadsetType_ {
-    
-    // Standalone Headsets
-    VRAPI_HEADSET_TYPE_OCULUSGO = 64, //< Oculus Go
-    VRAPI_HEADSET_TYPE_MIVR_STANDALONE = 65, //< China-only SKU
-
-    VRAPI_HEADSET_TYPE_OCULUSQUEST = 256,
-
-    
-    
-    VRAPI_HEADSET_TYPE_UNKNOWN = -1,
-} ovrHeadsetType;
 
 /// A geographic region authorized for certain hardware and content.
 typedef enum ovrDeviceRegion_ {
@@ -247,18 +233,14 @@ typedef enum ovrSystemProperty_ {
     /// Currently symmetric 90.0 degrees.
     VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X = 7,
     VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y = 8,
-    /// Path to the external SD card. On Android-M, this path is dynamic and can
-    /// only be determined once the SD card is mounted. Returns an empty string if
-    /// device does not support an ext sdcard or if running Android-M and the SD card
-    /// is not mounted.
-    VRAPI_SYS_PROP_EXT_SDCARD_PATH = 9,
+    // enum 9 used to be VRAPI_SYS_PROP_EXT_SDCARD_PATH.
     VRAPI_SYS_PROP_DEVICE_REGION = 10,
     /// Video decoder limit for the device.
     VRAPI_SYS_PROP_VIDEO_DECODER_LIMIT = 11,
-    VRAPI_SYS_PROP_HEADSET_TYPE = 12,
 
-    // enum 13 used to be VRAPI_SYS_PROP_BACK_BUTTON_SHORTPRESS_TIME
-    // enum 14 used to be VRAPI_SYS_PROP_BACK_BUTTON_DOUBLETAP_TIME
+    // enum 12 used to be VRAPI_SYS_PROP_HEADSET_TYPE.
+    // enum 13 used to be VRAPI_SYS_PROP_BACK_BUTTON_SHORTPRESS_TIME.
+    // enum 14 used to be VRAPI_SYS_PROP_BACK_BUTTON_DOUBLETAP_TIME.
 
     /// Returns an ovrHandedness enum indicating left or right hand.
     VRAPI_SYS_PROP_DOMINANT_HAND = 15,
@@ -280,13 +262,8 @@ typedef enum ovrSystemProperty_ {
     /// GL internal formats.
     VRAPI_SYS_PROP_SUPPORTED_SWAPCHAIN_FORMATS = 67,
 
-    /// Returns VRAPI_TRUE if Multiview rendering support is available for this system,
-    /// otherwise VRAPI_FALSE.
-    VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE = 128,
-
-    /// Returns VRAPI_TRUE if submission of SRGB Layers is supported for this system,
-    /// otherwise VRAPI_FALSE.
-    VRAPI_SYS_PROP_SRGB_LAYER_SOURCE_AVAILABLE = 129,
+    /// enum 128 used to be VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE.
+    /// enum 129 used to be VRAPI_SYS_PROP_SRGB_LAYER_SOURCE_AVAILABLE.
 
     /// Returns VRAPI_TRUE if on-chip foveated rendering of swapchains is supported
     /// for this system, otherwise VRAPI_FALSE.
@@ -312,19 +289,11 @@ typedef enum ovrProperty_ {
 
     VRAPI_DYNAMIC_FOVEATION_ENABLED =
         30, //< Used by apps to enable / disable dynamic foveation adjustments.
-} ovrProperty;
-
-
-/// Specifies left or right handedness.
-typedef enum ovrHandedness_ {
-    VRAPI_HAND_UNKNOWN = 0,
-    VRAPI_HAND_LEFT = 1,
-    VRAPI_HAND_RIGHT = 2
-} ovrHandedness;
+    } ovrProperty;
 
 /// System status bits.
 typedef enum ovrSystemStatus_ {
-    VRAPI_SYS_STATUS_DOCKED = 0, //< Device is docked.
+    // enum 0 used to be VRAPI_SYS_STATUS_DOCKED.
     VRAPI_SYS_STATUS_MOUNTED = 1, //< Device is mounted.
     VRAPI_SYS_STATUS_THROTTLED = 2, //< Device is in powersave mode.
 
@@ -359,7 +328,8 @@ typedef enum ovrSystemStatus_ {
         130, //< VRAPI_TRUE if the front buffer uses the sRGB color space.
 
     VRAPI_SYS_STATUS_SCREEN_CAPTURE_RUNNING =
-        131, // VRAPI_TRUE if the screen is currently being recorded
+        131, // VRAPI_TRUE if the screen is currently being recorded.
+
     } ovrSystemStatus;
 
 //-----------------------------------------------------------------
@@ -449,8 +419,9 @@ typedef enum ovrModeFlags_ {
     /// attribute. The same attribute would be applied when TimeWrap creates the shared context.
     /// More information could be found at:
     /// https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_create_context_no_error.txt
-    VRAPI_MODE_FLAG_CREATE_CONTEXT_NO_ERROR = 0x00100000
-} ovrModeFlags;
+    VRAPI_MODE_FLAG_CREATE_CONTEXT_NO_ERROR = 0x00100000,
+
+    } ovrModeFlags;
 
 /// Configuration details that stay constant between a vrapi_EnterVrMode()/vrapi_LeaveVrMode() pair.
 typedef struct ovrModeParms_ {
@@ -646,6 +617,54 @@ typedef enum ovrDefaultTextureSwapChain_ {
 
 typedef struct ovrTextureSwapChain ovrTextureSwapChain;
 
+typedef enum ovrSwapChainCreateFlags_ {
+    /// Image is in subsampled layout.
+    VRAPI_SWAPCHAIN_CREATE_SUBSAMPLED_BIT = 0x1,
+} ovrSwapChainCreateFlags;
+
+typedef enum ovrSwapChainUsageFlags_ {
+    /// Image may be a color rendering target.
+    VRAPI_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT = 0x1,
+
+    /// Image may be a depth/stencil rendering target.
+    VRAPI_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 0x2,
+} ovrSwapChainUsageFlags;
+
+typedef struct ovrSwapChainCreateInfo_ {
+    /// GL/Vulkan format of the texture, e.g. GL_RGBA or VK_FORMAT_R8G8B8A8_UNORM),
+    /// depending on GraphicsAPI used.
+    int64_t Format;
+
+    /// Width in pixels.
+    int Width;
+
+    /// Height in pixels.
+    int Height;
+
+    /// The number of levels of detail available for minified sampling of the image.
+    int Levels;
+
+    /// Number of faces, which can be either 6 (for cubemaps) or 1.
+    int FaceCount;
+
+    /// Number of array layers, 1 for 2D texture, 2 for texture 2D array (multiview case).
+    int ArraySize;
+
+    /// Number of buffers in the texture swap chain.
+    int BufferCount;
+
+    /// A bitmask of ovrSwapChainCreateFlags describing additional properties of
+    /// the swapchain.
+    uint64_t CreateFlags;
+
+    /// A bitmask of ovrSwapChainUsageFlags describing intended usage of the
+    /// swapchain's images.
+    uint64_t UsageFlags;
+} ovrSwapChainCreateInfo;
+
+OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrSwapChainCreateInfo, 48);
+OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrSwapChainCreateInfo, 48);
+
 //-----------------------------------------------------------------
 // Frame Submission
 //-----------------------------------------------------------------
@@ -679,8 +698,7 @@ typedef enum ovrFrameFlags_ {
 
 /// Per-frame configuration options that apply to a particular layer.
 typedef enum ovrFrameLayerFlags_ {
-    /// enum 1 << 0 used to be VRAPI_FRAME_LAYER_FLAG_WRITE_ALPHA.
-
+    
     /// NOTE: On Oculus standalone devices, chromatic aberration correction is enabled
     /// by default.
     /// For non Oculus standalone devices, this must be explicitly enabled by specifying the layer
@@ -717,6 +735,7 @@ typedef enum ovrFrameLayerFlags_ {
     
 } ovrFrameLayerFlags;
 
+
 /// The user's eye (left or right) that can see a layer.
 typedef enum ovrFrameLayerEye_ {
     VRAPI_FRAME_LAYER_EYE_LEFT = 0,
@@ -729,9 +748,7 @@ typedef enum ovrFrameLayerBlend_ {
     VRAPI_FRAME_LAYER_BLEND_ZERO = 0,
     VRAPI_FRAME_LAYER_BLEND_ONE = 1,
     VRAPI_FRAME_LAYER_BLEND_SRC_ALPHA = 2,
-    /// enum 3 used to be VRAPI_FRAME_LAYER_BLEND_DST_ALPHA.
-    /// enum 4 used to be VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_DST_ALPHA.
-    VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA = 5
+        VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA = 5
 } ovrFrameLayerBlend;
 
 /// Extra latency mode pipelines app CPU work a frame ahead of VR composition.
@@ -867,12 +884,12 @@ typedef struct ovrFrameParms_ {
     /// Latency Mode.
     ovrExtraLatencyMode ExtraLatencyMode;
 
-            /// \unused parameter.
-        ovrMatrix4f Reserved;
-        
-            /// \unused parameter.
-        void* Reserved1;
-        
+        /// \unused parameter.
+    ovrMatrix4f Reserved;
+
+        /// \unused parameter.
+    void* Reserved1;
+
     /// CPU/GPU performance parameters.
     ovrPerformanceParms PerformanceParms;
 
@@ -897,7 +914,8 @@ typedef enum ovrLayerType2_ {
     VRAPI_LAYER_TYPE_EQUIRECT2 = 5,
     VRAPI_LAYER_TYPE_LOADING_ICON2 = 6,
     VRAPI_LAYER_TYPE_FISHEYE2 = 7,
-    } ovrLayerType2;
+        VRAPI_LAYER_TYPE_EQUIRECT3 = 10,
+} ovrLayerType2;
 
 /// Properties shared by any type of layer.
 typedef struct ovrLayerHeader2_ {
@@ -907,9 +925,9 @@ typedef struct ovrLayerHeader2_ {
     ovrVector4f ColorScale;
     ovrFrameLayerBlend SrcBlend;
     ovrFrameLayerBlend DstBlend;
-            /// \unused parameter.
-        void* Reserved;
-        } ovrLayerHeader2;
+        /// \unused parameter.
+    void* Reserved;
+} ovrLayerHeader2;
 
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerHeader2, 36);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerHeader2, 40);
@@ -933,6 +951,7 @@ typedef struct ovrLayerProjection2_ {
 
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerProjection2, 312);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerProjection2, 328);
+
 
 /// ovrLayerCylinder2 provides support for a single 2D texture projected onto a cylinder shape.
 ///
@@ -964,8 +983,8 @@ typedef struct ovrLayerCylinder2_ {
         ovrMatrix4f TexCoordsFromTanAngles;
         ovrRectf TextureRect;
         /// \note textureMatrix is set up like the following:
-        ///	sx,  0, tx, 0
-        ///	0,  sy, ty, 0
+        /// sx,  0, tx, 0
+        /// 0,  sy, ty, 0
         ///	0,   0,  1, 0
         ///	0,   0,  0, 1
         /// since we do not need z coord for mapping to 2d texture.
@@ -1069,6 +1088,67 @@ typedef struct ovrLayerEquirect2_ {
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerEquirect2, 376);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerEquirect2, 392);
 
+/// ovrLayerEquirect3 provides support for a single Equirectangular texture at infinity or
+/// with non-infinite radius at a specific location.
+///
+/// This layer is very similar to ovrLayerEquirect2; the main difference is that it allows
+/// for the specification of TexCoordsFromTanAngles per-eye as well as a translation
+/// (in meters) which is applied to the equirect's center and radius (in meters).
+///
+/// TexCoordsFromTanAngles.M[3][0..2] represent the translation of the equirect's center;
+/// TexCoordsFromTanAngles.M[3][3] represents the radius of the equirect layer in meters
+/// (0.0f is used for the infinite radius).
+/// An example of setting the local equrect layer at 2 meters in front of the viewer with the
+/// radius 1.5 meters is as follows:
+///
+///    ovrLayerEquirect3 layer = vrapi_DefaultLayerEquirect3();
+///
+///    const float radius = 1.5; // 1.5 m radius
+///    layer.HeadPose = tracking->HeadPose;
+///    ovrPosef pose = {};
+///    pose.Position.x = 0.0f;
+///    pose.Position.y = 0.0f;
+///    pose.Position.z = -2.0f;
+///    pose.Orientation.x = 0.0f;
+///    pose.Orientation.y = 0.0f;
+///    pose.Orientation.z = 0.0f;
+///    pose.Orientation.w = 1.0f;
+///
+///    const ovrMatrix4f poseM = vrapi_GetTransformFromPose(&pose);
+///
+///    for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+///        const ovrMatrix4f modelViewMatrix =
+///            ovrMatrix4f_Multiply(&tracking->Eye[eye].ViewMatrix, &poseM);
+///        ovrMatrix4f tex_coords_matrix = ovrMatrix4f_Inverse(&modelViewMatrix);
+///        tex_coords_matrix.M[3][3] = radius;
+///        layer.Textures[eye].TexCoordsFromTanAngles = tex_coords_matrix;
+///        ....
+typedef struct ovrLayerEquirect3_ {
+    /// Header.Type must be VRAPI_LAYER_TYPE_EQUIRECT3.
+    ovrLayerHeader2 Header;
+    OVR_VRAPI_PADDING_32_BIT(4)
+
+    ovrRigidBodyPosef HeadPose;
+
+    struct {
+        /// Texture type used to create the swapchain must be a 2D target (VRAPI_TEXTURE_TYPE_2D_*).
+        ovrTextureSwapChain* ColorSwapChain;
+        int SwapChainIndex;
+        ovrMatrix4f TexCoordsFromTanAngles;
+        ovrRectf TextureRect;
+        /// \note textureMatrix is set up like the following:
+        ///	sx,  0, tx, 0
+        ///	0,  sy, ty, 0
+        ///	0,   0,  1, 0
+        ///	0,   0,  0, 1
+        /// since we do not need z coord for mapping to 2d texture.
+        ovrMatrix4f TextureMatrix;
+    } Textures[VRAPI_FRAME_LAYER_EYE_MAX];
+} ovrLayerEquirect3;
+
+OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerEquirect3, 440);
+OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerEquirect3, 456);
+
 /// ovrLayerLoadingIcon2 provides support for a monoscopic spinning layer.
 ///
 typedef struct ovrLayerLoadingIcon2_ {
@@ -1126,9 +1206,10 @@ OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerFishEye2, 488);
 typedef union ovrLayer_Union2_ {
     ovrLayerHeader2 Header;
     ovrLayerProjection2 Projection;
-    ovrLayerCylinder2 Cylinder;
+        ovrLayerCylinder2 Cylinder;
     ovrLayerCube2 Cube;
     ovrLayerEquirect2 Equirect;
+    ovrLayerEquirect3 Equirect3;
     ovrLayerLoadingIcon2 LoadingIcon;
     ovrLayerFishEye2 FishEye;
     } ovrLayer_Union2;
@@ -1160,6 +1241,93 @@ typedef enum ovrPerfThreadType_ {
 
 
 //-----------------------------------------------------------------
+// Color Space Management
+//-----------------------------------------------------------------
+/// Color space types for HMDs
+///
+/// Until vrapi_SetClientColorDesc is called, the client will default to Rec2020 for Quest and
+/// Rec709 for Go HMDs.
+///
+/// This API only handles color-space remapping. Unless specified, all color spaces use D65 white
+/// point. It will not affect brightness, contrast or gamma curves. Some of these aspects such as
+/// gamma, is handled by the texture format being used. From the GPU samplers' point-of-view, each
+/// texture will continue to be treated as linear luminance including sRGB which is converted to
+/// linear by the texture sampler.
+///
+/// 'VRAPI_COLORSPACE_UNMANAGED' will force the runtime to skip color correction for the provided
+/// content. This is *not* recommended unless the app developer is sure about what they're doing.
+/// 'VRAPI_COLORSPACE_UNMANAGED' is mostly useful for research & experimentation, but not for
+/// software distribution. This is because unless the client is applying the necessary corrections
+/// for each HMD type, the results seen in the HMD will be uncalibrated. This is especially true for
+/// future HMDs where the color space is not yet known or defined, which could lead to colors that
+/// look too dull, too saturated, or hue shifted.
+///
+/// Although native Quest and Rift CV1 color spaces are provided as options, they are not
+/// standardized color spaces. While we provide the exact color space primary coordinates, for
+/// better standardized visualized of authored content, it's recommended that the developers master
+/// using a well-defined color space in the provided in the options such as Rec.2020.
+///
+/// It is also recommended that content be authored for the wider color spaces instead of Rec.709 to
+/// prevent visuals from looking "washed out", "dull" or "desaturated" on wider gamut devices like
+/// the Quest.
+///
+/// Unique Color Space Details with Chromaticity Primaries in CIE 1931 xy:
+///
+/// Color Space: P3, similar to DCI-P3, but using D65 white point instead.
+/// Red  : (0.680, 0.320)
+/// Green: (0.265, 0.690)
+/// Blue : (0.150, 0.060)
+/// White: (0.313, 0.329)
+///
+/// Color Space: Rift CV1 between P3 & Adobe RGB using D75 white point
+/// Red  : (0.666, 0.334)
+/// Green: (0.238, 0.714)
+/// Blue : (0.139, 0.053)
+/// White: (0.298, 0.318)
+///
+/// Color Space: Quest similar to Rift CV1 using D75 white point
+/// Red  : (0.661, 0.338)
+/// Green: (0.228, 0.718)
+/// Blue : (0.142, 0.042)
+/// White: (0.298, 0.318)
+///
+/// Color Space: Rift S similar to Rec 709 using D75
+/// Red  : (0.640, 0.330)
+/// Green: (0.292, 0.586)
+/// Blue : (0.156, 0.058)
+/// White: (0.298, 0.318)
+///
+/// Note: Due to LCD limitations, the Go display will not be able to meaningfully differentiate
+/// brightness levels below 13 out of 255 for 8-bit sRGB or 0.0015 out of 1.0 max for linear-RGB
+/// shader output values. To that end, it is recommended that reliance on a dark and narrow gamut is
+/// avoided, and the content is instead spread across a larger brightness range when possible.
+///
+typedef enum ovrColorSpace_ {
+    /// No color correction, not recommended for production use. See notes above for more info
+    VRAPI_COLORSPACE_UNMANAGED = 0,
+    /// Preferred color space for standardized color across all Oculus HMDs with D65 white point
+    VRAPI_COLORSPACE_REC_2020 = 1,
+    /// Rec. 709 is used on Oculus Go and shares the same primary color coordinates as sRGB
+    VRAPI_COLORSPACE_REC_709 = 2,
+    /// Oculus Rift CV1 uses a unique color space, see enum description for more info
+    VRAPI_COLORSPACE_RIFT_CV1 = 3,
+    /// Oculus Rift S uses a unique color space, see enum description for more info
+    VRAPI_COLORSPACE_RIFT_S = 4,
+    /// Oculus Quest's native color space is slightly different than Rift CV1
+    VRAPI_COLORSPACE_QUEST = 5,
+    /// Similar to DCI-P3. See notes above for more details on P3
+    VRAPI_COLORSPACE_P3 = 6,
+    /// Similar to sRGB but with deeper greens using D65 white point
+    VRAPI_COLORSPACE_ADOBE_RGB = 7,
+} ovrColorSpace;
+
+typedef struct ovrHmdColorDesc_ {
+    /// See ovrColorSpace for more info.
+    ovrColorSpace ColorSpace;
+    OVR_VRAPI_PADDING(4)
+} ovrHmdColorDesc;
+
+//-----------------------------------------------------------------
 // Events
 //-----------------------------------------------------------------
 
@@ -1177,7 +1345,7 @@ typedef enum ovrEventType_ {
     // The current activity is in the background (but possibly still visible) and has lost input
     // focus.
     VRAPI_EVENT_FOCUS_LOST = 5,
-    } ovrEventType;
+        } ovrEventType;
 
 typedef struct ovrEventHeader_ {
     ovrEventType EventType;
@@ -1207,6 +1375,7 @@ typedef struct ovrEventFocusGained_ {
 typedef struct ovrEventFocusLost_ {
     ovrEventHeader EventHeader;
 } ovrEventFocusLost;
+
 
 
 typedef struct ovrEventDataBuffer_ {

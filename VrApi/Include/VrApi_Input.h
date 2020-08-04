@@ -17,6 +17,10 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include "VrApi_Config.h"
 #include "VrApi_Types.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /// Describes button input types.
 /// For the Gear VR Controller and headset, only the following ovrButton types are reported to the
 /// application:
@@ -83,9 +87,10 @@ typedef enum ovrControllerType_ {
     ovrControllerType_Reserved0 = (1 << 0), //< LTouch in CAPI
     ovrControllerType_Reserved1 = (1 << 1), //< RTouch in CAPI
     ovrControllerType_TrackedRemote = (1 << 2),
-        ovrControllerType_Gamepad = (1 << 4), //< Xbox in CAPI
+        ovrControllerType_Gamepad = (1 << 4), // Deprecated, will be removed in a future release
     ovrControllerType_Hand = (1 << 5),
 
+        ovrControllerType_StandardPointer = (1 << 7),
         ovrControllerType_EnumSize = 0x7fffffff
 } ovrControllerType;
 
@@ -167,7 +172,7 @@ typedef struct ovrInputTrackedRemoteCapabilities_ {
 } ovrInputTrackedRemoteCapabilities;
 
 /// Capabilities for an XBox style game pad
-typedef struct ovrInputGamepadCapabilities_ {
+OVR_VRAPI_DEPRECATED(typedef struct ovrInputGamepadCapabilities_ {
     ovrInputCapabilityHeader Header;
 
     /// Mask of controller capabilities described by ovrControllerCapabilities
@@ -178,8 +183,23 @@ typedef struct ovrInputGamepadCapabilities_ {
 
     // Reserved for future use.
     uint64_t Reserved[20];
-} ovrInputGamepadCapabilities;
+} ovrInputGamepadCapabilities);
 
+
+typedef struct ovrInputStandardPointerCapabilities_ {
+    ovrInputCapabilityHeader Header;
+
+    /// Mask of controller capabilities described by ovrControllerCapabilities
+    uint32_t ControllerCapabilities;
+
+    /// Maximum submittable samples for the haptics buffer
+    uint32_t HapticSamplesMax;
+    /// length in milliseconds of a sample in the haptics buffer.
+    uint32_t HapticSampleDurationMS;
+
+    // Reserved for future use.
+    uint64_t Reserved[20];
+} ovrInputStandardPointerCapabilities;
 
 /// The buffer data for playing haptics
 typedef struct ovrHapticBuffer_ {
@@ -247,7 +267,7 @@ typedef struct ovrInputStateTrackedRemote_ {
 
 
 /// ovrInputStateGamepad describes the input state gamepad input devices
-typedef struct ovrInputStateGamepad_ {
+OVR_VRAPI_DEPRECATED(typedef struct ovrInputStateGamepad_ {
     ovrInputStateHeader Header;
 
     /// Values for buttons described by ovrButton.
@@ -265,12 +285,56 @@ typedef struct ovrInputStateGamepad_ {
 
     // Reserved for future use.
     uint64_t Reserved[20];
-} ovrInputStateGamepad;
+} ovrInputStateGamepad);
 
+
+typedef enum ovrInputStateStandardPointerStatus_ {
+    ovrInputStateStandardPointerStatus_PointerValid =
+        (1 << 1), // if set, the PointerPose and PinchStrength contain valid data, otherwise
+                  // they should not be used.
+    ovrInputStateStandardPointerStatus_MenuPressed =
+        (1 << 2), // if set,
+                  // hand: the system gesture as was performed as the non-dominant hand
+                  // tracked controller: the menu button pressed
+} ovrInputStateStandardPointerStatus;
+
+typedef struct ovrInputStateStandardPointer_ {
+    // The underlying device represented by this state. Can be used to get full controller state via
+    // vrapi_GetCurrentInputState.
+    ovrInputStateHeader Header;
+
+    // World space position and orientation of the pointer. This describes a pointing ray useful for
+    // UI interactions.
+    ovrPosef PointerPose;
+
+    // Strength of the user intent to interact with something in the path of PointerPose.
+    // Range 0.0 to 1.0, where 1.0 is fully active.
+    //   For hands; index finger and thumb pinching.
+    //   For touch controller: trigger
+    //   For mouse: left click
+    float PointerStrength;
+
+    // Fields of this struct are only set if the input device has Orientation or Position
+    // capabilities.
+    ovrPosef GripPose;
+
+    // Status of this input state. Mask of ovrInputStateStandardPointerStatus flags.
+    uint32_t InputStateStatus;
+
+    // Reserved for future use.
+    uint64_t Reserved[20];
+} ovrInputStateStandardPointer;
 
 //-----------------------------------------------------------------
 // Hand tracking
 //-----------------------------------------------------------------
+
+/// Specifies left or right handedness.
+typedef enum ovrHandedness_ {
+    VRAPI_HAND_UNKNOWN = 0,
+    VRAPI_HAND_LEFT = 1,
+    VRAPI_HAND_RIGHT = 2
+} ovrHandedness;
 
 //-----------------------------------------------------------------
 // Hand capabilities
@@ -426,6 +490,10 @@ typedef enum ovrInputStateHandStatus_ {
         (1 << 5), // if this is set the pinch gesture for that finger is on
     ovrInputStateHandStatus_SystemGestureProcessing =
         (1 << 6), // if this is set the hand is currently processing a system gesture
+    ovrInputStateHandStatus_DominantHand =
+        (1 << 7), // if this is set the hand is considered the dominant hand
+    ovrInputStateHandStatus_MenuPressed =
+        (1 << 8), // if this is set the hand performed the system gesture as the non-dominant hand
     ovrInputStateHandStatus_EnumSize = 0x7fffffff
 } ovrInputStateHandStatus;
 
@@ -582,10 +650,6 @@ OVR_VRAPI_EXPORT ovrResult
 vrapi_GetHandMesh(ovrMobile* ovr, const ovrHandedness handedness, ovrHandMeshHeader* header);
 
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 /// Enumerates the input devices connected to the system
 /// Start with index=0 and counting up. Stop when ovrResult is < 0
 ///
@@ -668,14 +732,6 @@ OVR_VRAPI_EXPORT ovrResult vrapi_GetInputTrackingState(
 OVR_VRAPI_DEPRECATED(
     OVR_VRAPI_EXPORT void vrapi_RecenterInputPose(ovrMobile* ovr, const ovrDeviceID deviceID));
 
-/// Enable or disable emulation for the GearVR Controller.
-/// Emulation is false by default.
-/// If emulationOn == true, then the back button and touch events on the GearVR Controller will be
-/// sent through the Android dispatchKeyEvent and dispatchTouchEvent path as if they were from the
-/// headset back button and touchpad. Applications that are intentionally enumerating the controller
-/// will likely want to turn emulation off in order to differentiate between controller and headset
-/// input events.
-OVR_VRAPI_EXPORT ovrResult vrapi_SetRemoteEmulation(ovrMobile* ovr, const bool emulationOn);
 
 #if defined(__cplusplus)
 } // extern "C"

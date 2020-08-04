@@ -998,10 +998,10 @@ Matrix4f OvrSceneView::GetEyeProjectionMatrix(
     //		"Tightening the Precision of Perspective Rendering"
     //		Paul Upchurch, Mathieu Desbrun
     //		Journal of Graphics Tools, Volume 16, Issue 1, 2012
-    return ovrMatrix4f_CreateProjectionFov(fovDegreesX, fovDegreesY, 0.0f, 0.0f, Znear, 0.0f);
+    // return ovrMatrix4f_CreateProjectionFov(fovDegreesX, fovDegreesY, 0.0f, 0.0f, Znear, 0.0f);
 
-    // Use the incoming default projection
-    // return CurrentTracking.Eye[eye].ProjectionMatrix;
+    // Use the incoming default projection since our headset are using asymmetric fov
+    return CurrentTracking.Eye[eye].ProjectionMatrix;
 }
 
 Matrix4f OvrSceneView::GetEyeViewProjectionMatrix(
@@ -1088,13 +1088,6 @@ void OvrSceneView::Frame(
     if (vrFrame.RightRemoteTracked) {
         RightStick.x += vrFrame.RightRemote.Joystick.x;
         RightStick.y -= vrFrame.RightRemote.Joystick.y;
-    }
-
-    if (vrFrame.GamePadTracked) {
-        LeftStick.x += vrFrame.GamePad.LeftJoystick.x;
-        LeftStick.y += vrFrame.GamePad.LeftJoystick.y;
-        RightStick.x += vrFrame.GamePad.RightJoystick.x;
-        RightStick.y += vrFrame.GamePad.RightJoystick.y;
     }
 
     /// Apply dead zone

@@ -16,9 +16,10 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include <unordered_map>
 #include <functional>
 
+#include "VrApi_Input.h"
+
 #include "Appl.h"
 #include "OVR_FileSys.h"
-
 #include "Model/SceneView.h"
 #include "Render/SurfaceRender.h"
 #include "Render/DebugLines.h"
@@ -27,11 +28,8 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include "Render/ParticleSystem.h"
 #include "Render/PanelRenderer.h"
 #include "GUI/GuiSys.h"
-
-#include "VrApi_Input.h"
-
-#include "OVR_HandModel.h"
-#include "OVR_Skeleton.h"
+#include "Input/HandModel.h"
+#include "Input/Skeleton.h"
 
 namespace OVRFW {
 

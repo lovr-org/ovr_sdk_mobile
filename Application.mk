@@ -5,7 +5,7 @@
 
 # This needs to be defined to get the right header directories for egl / etc
 # NOTE: this is ignored from here now, and must be specified in build.gradle!
-APP_PLATFORM := android-21
+APP_PLATFORM := android-24
 
 # Statically link the C++_STATIC STL. This may not be safe for multi-so libraries but
 # we don't know of any problems yet.

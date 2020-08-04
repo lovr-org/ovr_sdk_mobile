@@ -14,7 +14,6 @@ LOCAL_C_INCLUDES 		:= 	$(LOCAL_PATH)/../../../../SampleFramework/Src \
 							$(LOCAL_PATH)/../../../../../1stParty/utilities/include \
 							$(LOCAL_PATH)/../../../../../3rdParty/stb/src \
 
-
 LOCAL_SRC_FILES			:= ../../../Src/VrCubeWorld_Framework.cpp
 					
 # include default libraries

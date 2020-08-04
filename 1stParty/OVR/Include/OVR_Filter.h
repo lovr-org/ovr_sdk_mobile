@@ -128,22 +128,23 @@ class SingleExpoFilter {
 template <typename T>
 class VelocityFilter {
    public:
-    VelocityFilter() : warm(false), last(T{}) {}
-    VelocityFilter(SingleExpoParams p) : params(p), warm(false), last(T{}), vfilter(p) {}
+    VelocityFilter() : warm(false), lastFiltered(T{}), lastInput(T{}) {}
+    VelocityFilter(SingleExpoParams p)
+        : params(p), warm(false), lastFiltered(T{}), lastInput(T{}), vfilter(p) {}
     VelocityFilter(float c) : VelocityFilter(SingleExpoParams(c)) {}
 
     T Filter(T x, float dt) {
         vfilter.params = params;
         if (!warm) {
             warm = true;
-            last = x;
-            return T{};
+            lastInput = x;
+            return lastFiltered = T{};
         }
 
         float divdt = (1.0f / std::max(OVR::Math<float>::Tolerance(), dt)); // avoid divide by zero
-        auto velocity = OVRF::scale(OVRF::diff(x, last), divdt);
-        last = x;
-        return vfilter.Filter(velocity, dt);
+        auto velocity = OVRF::scale(OVRF::diff(x, lastInput), divdt);
+        lastInput = x;
+        return lastFiltered = vfilter.Filter(velocity, dt);
     }
 
     void Reset() {
@@ -152,7 +153,7 @@ class VelocityFilter {
     }
 
     constexpr T Last() const {
-        return last;
+        return lastFiltered;
     }
 
     // params
@@ -161,7 +162,8 @@ class VelocityFilter {
    private:
     // state
     bool warm;
-    T last;
+    T lastFiltered;
+    T lastInput;
     SingleExpoFilter<T> vfilter;
 };
 

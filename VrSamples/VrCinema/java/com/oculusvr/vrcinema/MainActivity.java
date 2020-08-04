@@ -240,6 +240,8 @@ public class MainActivity extends android.app.NativeActivity
           mediaPlayer.prepare();
         } catch (IOException t) {
           Log.e(TAG, "mediaPlayer.prepare failed:" + t.getMessage());
+        } catch (IllegalStateException ise) {
+          Log.e(TAG, "mediaPlayer.prepare: Caught illegalStateException: " + ise.toString());		
         }
       } catch (IOException t) {
         Log.e(TAG, "mediaPlayer.setDataSource failed:" + t.getMessage());

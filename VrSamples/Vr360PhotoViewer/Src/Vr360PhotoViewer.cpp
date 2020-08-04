@@ -221,7 +221,7 @@ bool Vr360PhotoViewer::AppInit(const OVRFW::ovrAppContext* appContext) {
         return false;
     }
 
-    UseSrgb = vrapi_GetSystemPropertyInt(&ctx, VRAPI_SYS_PROP_SRGB_LAYER_SOURCE_AVAILABLE);
+    UseSrgb = true;
 
     /// Init Rendering
     SurfaceRender.Init();

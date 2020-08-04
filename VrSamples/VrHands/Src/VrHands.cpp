@@ -1213,7 +1213,6 @@ void ovrVrHands::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
         }
         default:
             ALOG("Unknown device connected!");
-            assert(false);
             return;
     }
 

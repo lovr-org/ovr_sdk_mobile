@@ -12,10 +12,7 @@ LOCAL_C_INCLUDES 		:= 	$(LOCAL_PATH)/../../../../SampleFramework/Src \
 							$(LOCAL_PATH)/../../../../../1stParty/utilities/include \
 							$(LOCAL_PATH)/../../../../../3rdParty/stb/src \
 
-
 LOCAL_SRC_FILES			:= 	../../../Src/main.cpp \
-							../../../Src/OVR_Skeleton.cpp \
-							../../../Src/OVR_ArmModel.cpp \
 							../../../Src/ControllerGUI.cpp \
 							../../../Src/VrInput.cpp \
 

@@ -132,7 +132,7 @@ bool ovrAppl::Init(const ovrAppContext* context, const ovrInitParms* initParms) 
 
     int32_t result = VRAPI_INITIALIZE_SUCCESS;
     if (initParms == nullptr) {
-        const ovrInitParms localInitParms = vrapi_DefaultInitParms(java);
+        ovrInitParms localInitParms = vrapi_DefaultInitParms(java);
         result = vrapi_Initialize(&localInitParms);
     } else {
         result = vrapi_Initialize(initParms);
@@ -276,6 +276,12 @@ void ovrAppl::HandleLifecycle(const ovrAppContext* context) {
                 vrapi_SetTrackingSpace(SessionObject, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
             }
 
+            {
+                ovrHmdColorDesc colorDesc{};
+                colorDesc.ColorSpace = VRAPI_COLORSPACE_QUEST;
+                vrapi_SetClientColorDesc(SessionObject, &colorDesc);
+            }
+
             SubmitLoadingIcon(SessionObject, GetFrameIndex(), GetDisplayTime());
             AppResumed(context);
         }
@@ -385,6 +391,10 @@ void ovrAppl::GetIntentStrings(
 
     jobject me = ctx.ActivityObject;
 
+    intentFromPackage = "";
+    intentJSON = "";
+    intentURI = "";
+
     /// Find all classes
     JavaClass acl(env, env->GetObjectClass(me));
     if (0 == acl.GetJClass()) {
@@ -394,12 +404,17 @@ void ovrAppl::GetIntentStrings(
 
     const jmethodID giid =
         env->GetMethodID(acl.GetJClass(), "getIntent", "()Landroid/content/Intent;");
+    if (0 == giid) {
+        ALOGV("giid = 0");
+        return;
+    }
 
-    JavaObject intent(env, env->CallObjectMethod(me, giid)); // Got our intent
-    if (0 == intent.GetJObject()) {
+    jobject jintent = env->CallObjectMethod(me, giid);
+    if (0 == jintent) {
         ALOGV("intent = 0");
         return;
     }
+    JavaObject intent(env, jintent); // Got our intent
 
     JavaClass icl(env, env->GetObjectClass(intent.GetJObject())); // class pointer of Intent
     if (0 == icl.GetJClass()) {
@@ -409,6 +424,10 @@ void ovrAppl::GetIntentStrings(
 
     const jmethodID gseid = env->GetMethodID(
         icl.GetJClass(), "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;");
+    if (0 == gseid) {
+        ALOGV("gseid = 0");
+        return;
+    }
 
     JavaString intent_key_cmd(env, INTENT_KEY_CMD);
     if (0 == intent_key_cmd.GetJObject()) {
@@ -416,10 +435,10 @@ void ovrAppl::GetIntentStrings(
         return;
     }
 
-    JavaString intent_cmd(
-        env,
-        (jstring)env->CallObjectMethod(intent.GetJObject(), gseid, intent_key_cmd.GetJObject()));
-    if (intent_cmd.GetJObject() != 0) {
+    jstring jintent_cmd =
+        (jstring)env->CallObjectMethod(intent.GetJObject(), gseid, intent_key_cmd.GetJObject());
+    if (jintent_cmd != 0) {
+        JavaString intent_cmd(env, jintent_cmd);
         const char* intent_cmd_ch = env->GetStringUTFChars(intent_cmd.GetJString(), 0);
         ALOGV("GetIntentStrings - intent_cmd_ch = `%s`", intent_cmd_ch);
         intentJSON = intent_cmd_ch;
@@ -431,36 +450,53 @@ void ovrAppl::GetIntentStrings(
         ALOGV("intent_key_from_pkg = 0");
         return;
     }
-
-    JavaString intent_pkg(
-        env,
-        (jstring)env->CallObjectMethod(
-            intent.GetJObject(), gseid, intent_key_from_pkg.GetJObject()));
-    if (intent_pkg.GetJObject() != 0) {
-        const char* intent_pkg_ch = env->GetStringUTFChars(intent_pkg.GetJString(), 0);
-        ALOGV("GetIntentStrings - intent_pkg_ch = `%s`", intent_pkg_ch);
-        intentFromPackage = intent_pkg_ch;
-        env->ReleaseStringUTFChars(intent_pkg.GetJString(), intent_pkg_ch);
+    jstring jintent_pkg = (jstring)env->CallObjectMethod(
+        intent.GetJObject(), gseid, intent_key_from_pkg.GetJObject());
+    if (0 == jintent_pkg) {
+        ALOGV("intent_key_from_pkg = 0");
+        return;
     }
+
+    JavaString intent_pkg(env, jintent_pkg);
+    const char* intent_pkg_ch = env->GetStringUTFChars(intent_pkg.GetJString(), 0);
+    ALOGV("GetIntentStrings - intent_pkg_ch = `%s`", intent_pkg_ch);
+    intentFromPackage = intent_pkg_ch;
+    env->ReleaseStringUTFChars(intent_pkg.GetJString(), intent_pkg_ch);
 
     // Get Uri
     const jmethodID igd = env->GetMethodID(icl.GetJClass(), "getData", "()Landroid/net/Uri;");
-    JavaObject uri(env, env->CallObjectMethod(intent.GetJObject(), igd));
-    if (uri.GetJObject()) {
-        JavaClass ucl(env, env->FindClass("android/net/Uri")); // class pointer of Uri
-        if (0 == ucl.GetJClass()) {
-            ALOGV("ucl = 0");
-            return;
-        }
+    if (0 == igd) {
+        ALOGV("igd = 0");
+        return;
+    }
 
-        const jmethodID uts = env->GetMethodID(ucl.GetJClass(), "toString", "()Ljava/lang/String;");
-        JavaString uristr(env, (jstring)env->CallObjectMethod(uri.GetJObject(), uts));
-        if (uristr.GetJObject() != 0) {
-            const char* uristr_ch = env->GetStringUTFChars(uristr.GetJString(), 0);
-            ALOGV("AppInit - uristr_ch = `%s`", uristr_ch);
-            intentURI = uristr_ch;
-            env->ReleaseStringUTFChars(uristr.GetJString(), uristr_ch);
-        }
+    jobject juri = env->CallObjectMethod(intent.GetJObject(), igd);
+    if (0 == juri) {
+        ALOGV("juri = 0");
+        return;
+    }
+
+    JavaObject uri(env, juri);
+    jclass uriclass = (jclass)env->FindClass("android/net/Uri");
+    if (0 == uriclass) {
+        ALOGV("uriclass = 0");
+        return;
+    }
+
+    JavaClass ucl(env, uriclass); // class pointer of Uri
+    const jmethodID uts = env->GetMethodID(uriclass, "toString", "()Ljava/lang/String;");
+    if (0 == uts) {
+        ALOGV("uts = 0");
+        return;
+    }
+
+    jstring juristr = (jstring)env->CallObjectMethod(uri.GetJObject(), uts);
+    if (juristr != 0) {
+        JavaString uristr(env, juristr);
+        const char* uristr_ch = env->GetStringUTFChars(juristr, 0);
+        ALOGV("AppInit - uristr_ch = `%s`", uristr_ch);
+        intentURI = uristr_ch;
+        env->ReleaseStringUTFChars(juristr, uristr_ch);
     }
 }
 
@@ -493,7 +529,7 @@ ovrApplFrameOut ovrAppl::Frame(ovrApplFrameIn& frameIn) {
     DisplayTime = frameIn.PredictedDisplayTime;
 
     // VrApi Events event queue must be processed with regular frequency.
-    HandleVREvents(frameIn);
+    HandleVrApiEvents(frameIn);
 
     // copy input from the pending lists into the frame input
     {
@@ -662,7 +698,7 @@ void ovrAppl::DefaultRenderFrame_Ending(const ovrApplFrameIn& in, ovrRendererOut
     out.FrameFlags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
 }
 
-void ovrAppl::HandleVREvents(ovrApplFrameIn& in) {
+void ovrAppl::HandleVrApiEvents(ovrApplFrameIn& in) {
     ovrEventDataBuffer eventDataBuffer = {};
 
     // Poll for VrApi events
@@ -675,19 +711,18 @@ void ovrAppl::HandleVREvents(ovrApplFrameIn& in) {
 
         switch (eventHeader->EventType) {
             case VRAPI_EVENT_DATA_LOST:
-                ALOGV("vrapi_PollEvent: Received VRAPI_EVENT_DATA_LOST");
+                AppDataLost();
                 break;
             case VRAPI_EVENT_VISIBILITY_GAINED:
-                ALOGV("vrapi_PollEvent: Received VRAPI_EVENT_VISIBILITY_GAINED");
+                AppVisibilityGained();
                 break;
             case VRAPI_EVENT_VISIBILITY_LOST:
-                ALOGV("vrapi_PollEvent: Received VRAPI_EVENT_VISIBILITY_LOST");
+                AppVisibilityLost();
                 break;
             case VRAPI_EVENT_FOCUS_GAINED:
                 // FOCUS_GAINED is sent when the application is in the foreground and has
                 // input focus. This may be due to a system overlay relinquishing focus
                 // back to the application.
-                ALOGV("vrapi_PollEvent: Received VRAPI_EVENT_FOCUS_GAINED");
                 AppGainedFocus();
                 break;
             case VRAPI_EVENT_FOCUS_LOST:
@@ -695,11 +730,11 @@ void ovrAppl::HandleVREvents(ovrApplFrameIn& in) {
                 // therefore does not have input focus. This may be due to a system overlay taking
                 // focus from the application. The application should take appropriate action when
                 // this occurs.
-                ALOGV("vrapi_PollEvent: Received VRAPI_EVENT_FOCUS_LOST");
                 AppLostFocus();
                 break;
             default:
-                ALOGV("vrapi_PollEvent: Unknown event");
+                // allow the app to handle the event
+                AppHandleVrApiEvent(eventHeader);
                 break;
         }
     }
@@ -708,8 +743,25 @@ void ovrAppl::HandleVREvents(ovrApplFrameIn& in) {
 void ovrAppl::AppLostFocus() {
     ALOGV("AppLostFocus: Received VRAPI_EVENT_FOCUS_LOST");
 }
+
 void ovrAppl::AppGainedFocus() {
     ALOGV("AppGainedFocus: Received VRAPI_EVENT_FOCUS_GAINED");
+}
+
+void ovrAppl::AppDataLost() {
+    ALOGV("AppDataLost: Received VRAPI_EVENT_DATA_LOST");
+}
+
+void ovrAppl::AppVisibilityGained() {
+    ALOGV("AppVisibilityGained: Received VRAPI_EVENT_VISIBILITY_GAINED");
+}
+
+void ovrAppl::AppVisibilityLost() {
+    ALOGV("AppVisibilityLost: Received VRAPI_EVENT_VISIBILITY_LOST");
+}
+
+void ovrAppl::AppHandleVrApiEvent(const ovrEventHeader* event) {
+    ALOGV("AppHandleVrApiEvent");
 }
 
 void ovrAppl::AddKeyEvent(const int32_t keyCode, const int32_t action) {
@@ -730,7 +782,6 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
     in.LeftRemoteTracked = false;
     in.RightRemoteTracked = false;
     in.SingleHandRemoteTracked = false;
-    in.GamePadTracked = false;
     in.SingleHandRemoteTrackpadMaxX = 0u;
     in.SingleHandRemoteTrackpadMaxY = 0u;
     in.AllButtons = 0u;
@@ -796,14 +847,6 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
                     }
                 }
             }
-        } else if (capsHeader.Type == ovrControllerType_Gamepad) {
-            ovrInputStateGamepad state;
-            state.Header.ControllerType = ovrControllerType_Gamepad;
-            if (ovrSuccess ==
-                vrapi_GetCurrentInputState(GetSessionObject(), deviceID, &state.Header)) {
-                in.GamePadTracked = true;
-                in.GamePad = state;
-            }
         }
     }
 
@@ -819,9 +862,6 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
     if (in.SingleHandRemoteTracked) {
         in.AllButtons |= in.SingleHandRemote.Buttons;
         in.AllTouches |= in.SingleHandRemote.Touches;
-    }
-    if (in.GamePadTracked) {
-        in.AllButtons |= in.GamePad.Buttons;
     }
 
     // Delta from last frame

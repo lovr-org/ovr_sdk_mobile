@@ -11,7 +11,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:3.2.0'
+    classpath 'com.android.tools.build:gradle:3.5.3'
   }
 }
 
@@ -97,19 +97,19 @@ class VrAppPlugin implements Plugin<Project> {
 
     project.android {
 
-	  compileSdkVersion 21
+	  compileSdkVersion 26
 	  buildToolsVersion '28.0.3'
 
 	  defaultConfig {
-		  minSdkVersion 21
-		  targetSdkVersion 21
+		  minSdkVersion 24
+		  targetSdkVersion 25
 
 		  externalNativeBuild {
 			  ndk {
 			  }
 			  ndkBuild {
 				  def numProcs = Runtime.runtime.availableProcessors()
-				  arguments "V=0", "-j$numProcs", "-C$project.buildDir.parent", "APP_PLATFORM=android-21", "NDK_TOOLCHAIN_VERSION=clang", "APP_STL=c++_static"
+				  arguments "V=0", "-j$numProcs", "-C$project.buildDir.parent", "APP_PLATFORM=android-24", "NDK_TOOLCHAIN_VERSION=clang", "APP_STL=c++_static"
 			  }
 		  }
 	  }
@@ -139,7 +139,7 @@ class VrAppPlugin implements Plugin<Project> {
 			  storePassword keystorePassword
 			  keyAlias keystoreKeyAlias
 			  keyPassword keystoreKeyPassword
-			  v2SigningEnabled false
+			  v2SigningEnabled true
 		  }
 
 		  release {
@@ -147,7 +147,7 @@ class VrAppPlugin implements Plugin<Project> {
 			  storePassword keystorePassword
 			  keyAlias keystoreKeyAlias
 			  keyPassword keystoreKeyPassword
-			  v2SigningEnabled false
+			  v2SigningEnabled true
 		  }
 	  }
 
@@ -227,7 +227,7 @@ class VrAppPlugin implements Plugin<Project> {
 
       project.android.applicationVariants.all { variant ->
         Task installAndRun = project.task( "installAndRun${variant.name.capitalize()}" ) {
-          dependsOn variant.assemble
+          dependsOn variant.assembleProvider.get()
           dependsOn initDeviceList
           onlyIf { project.hasProperty( "should_install" ) }
           description "Installs and runs the APK file"
@@ -242,13 +242,13 @@ class VrAppPlugin implements Plugin<Project> {
                   if ( project.hasProperty( "clear_logcat" ) ) {
                     clearAdbLog( device ) 
                   }
-                  runApk( device, new File("${output.processManifest.manifestOutputDirectory}/AndroidManifest.xml") )
+                  runApk( device, new File(output.processManifest.manifestOutputDirectory.get().asFile, "AndroidManifest.xml"))
                 }
               }
             }
           }
         }
-        variant.assemble.finalizedBy installAndRun
+        variant.assembleProvider.get().finalizedBy installAndRun
       }
     }
   }
@@ -282,45 +282,6 @@ project.task('genDebugKeystore', type: GenDebugKeystore ) {
     description 'generate debug keystore'
 }
 
-// *******************************
-// BUILD SDK LIBS TASK
-// *******************************
-
-class BuildSDKLibs extends DefaultTask {
-
-    String buildType
-
-    @TaskAction
-    buildSdkLibs() {
-
-        println "buildSdkLibs() started"
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-            def pythonCmd = "${project.rootProject.projectDir}/bin/scripts/build/ovrbuild_sdklibs.py.bat"
-            project.exec {
-                commandLine pythonCmd,
-                buildType
-            }
-        } else {
-            def pythonCmd = 'python'
-            project.exec {
-                commandLine pythonCmd,
-                "${project.rootProject.projectDir}/bin/scripts/build/ovrbuild_sdklibs.py",
-                buildType
-            }
-        }
-        println "buildSdkLibs() finished"
-    }
-}
-
-project.task('buildSdkLibsDebug', type: BuildSDKLibs) {
-    description 'build sdk libs'
-    buildType = "debug"
-}
-
-project.task('buildSdkLibsRelease', type: BuildSDKLibs) {
-    description 'build sdk libs'
-    buildType = "release"
-}	
 
 // **************************************************************
 // Task interceptor to add dependant tasks
@@ -332,12 +293,6 @@ project.tasks.whenTaskAdded { task ->
     }
     if (task.name == 'validateSigningRelease') {
         task.dependsOn 'genDebugKeystore'
-    }
-    if (task.name == 'preDebugBuild') {
-        task.dependsOn buildSdkLibsDebug
-    }
-    if (task.name == 'preReleaseBuild') {
-        task.dependsOn buildSdkLibsRelease
     }
 }
 

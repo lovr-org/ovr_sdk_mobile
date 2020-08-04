@@ -122,8 +122,8 @@ while ( !exit )
 		modeParms.ShareContext = eglContext;
 		ovrMobile * ovr = vrapi_EnterVrMode( &modeParms );
 
-		// Set the tracking transform to use, by default this is eye level.
-		vrapi_SetTrackingTransform( ovr, vrapi_GetTrackingTransform( ovr, VRAPI_TRACKING_TRANSFORM_SYSTEM_CENTER_EYE_LEVEL ) );
+		// Set the tracking space to use, by default this is eye level.
+		vrapi_SetTrackingSpace( ovr, VRAPI_TRACKING_SPACE_LOCAL );
 
 		// Frame loop, possibly running on another thread.
 		for ( long long frameIndex = 1; resumed && nativeWindow != NULL; frameIndex++ )
@@ -755,6 +755,9 @@ OVR_VRAPI_EXPORT ovrResult vrapi_GetBoundaryVisible(ovrMobile* ovr, bool* visibl
 /// If an unsupported format is provided, swapchain creation will fail.
 ///
 /// SwapChain creation failures result in a return value of 'nullptr'.
+OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateTextureSwapChain4(
+    const ovrSwapChainCreateInfo* createInfo);
+
 OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateTextureSwapChain3(
     ovrTextureType type,
     int64_t format,
@@ -792,8 +795,6 @@ OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateTextureSwapChain(
 ///
 /// If isProtected is true, the surface swapchain will be created as a protected surface, ie for
 /// supporting secure video playback.
-///
-/// NOTE: These paths are not currently supported under Vulkan.
 OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateAndroidSurfaceSwapChain(int width, int height);
 OVR_VRAPI_EXPORT ovrTextureSwapChain*
 vrapi_CreateAndroidSurfaceSwapChain2(int width, int height, bool isProtected);
@@ -877,6 +878,27 @@ OVR_VRAPI_EXPORT ovrResult
 vrapi_SetExtraLatencyMode(ovrMobile* ovr, const ovrExtraLatencyMode mode);
 
 //-----------------------------------------------------------------
+// Color Space Management
+//-----------------------------------------------------------------
+
+/// Returns native color space description of the current HMD. This is *not* a "getter" function
+/// for vrapi_SetClientColorDesc function. It will only return a fixed value for the current HMD.
+///
+/// \return Returns an ovrHmdColorDesc.
+OVR_VRAPI_EXPORT ovrHmdColorDesc vrapi_GetHmdColorDesc(ovrMobile* ovr);
+
+/// Sets the color space actively being used by the client app.
+///
+/// This value does not have to follow the color space provided in ovr_GetHmdColorDesc. It should
+/// reflect the color space used in the final rendered frame the client has submitted to the SDK.
+/// If this function is never called, the session will keep using the default color space deemed
+/// appropriate by the runtime. See remarks in ovrColorSpace enum for more info on default behavior.
+///
+/// \return Returns an ovrResult indicating success or failure.
+OVR_VRAPI_EXPORT ovrResult
+vrapi_SetClientColorDesc(ovrMobile* ovr, const ovrHmdColorDesc* colorDesc);
+
+//-----------------------------------------------------------------
 // Display Refresh Rate
 //-----------------------------------------------------------------
 
@@ -903,6 +925,7 @@ OVR_VRAPI_EXPORT ovrResult vrapi_SetDisplayRefreshRate(ovrMobile* ovr, const flo
 /// Returns ovrSuccess if no error occured.
 /// If no events are pending the event header EventType will be VRAPI_EVENT_NONE.
 OVR_VRAPI_EXPORT ovrResult vrapi_PollEvent(ovrEventHeader* event);
+
 
 
 #if defined(__cplusplus)

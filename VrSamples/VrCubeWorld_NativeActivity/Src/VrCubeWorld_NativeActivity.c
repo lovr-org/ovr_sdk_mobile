@@ -1767,14 +1767,6 @@ static void ovrApp_HandleInput(ovrApp* app) {
                 backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_B;
                 backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Y;
             }
-        } else if (cap.Type == ovrControllerType_Gamepad) {
-            ovrInputStateGamepad gamepadState;
-            gamepadState.Header.ControllerType = ovrControllerType_Gamepad;
-            result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &gamepadState.Header);
-            if (result == ovrSuccess) {
-                backButtonDownThisFrame |= ((gamepadState.Buttons & ovrButton_Back) != 0) ||
-                    ((gamepadState.Buttons & ovrButton_B) != 0);
-            }
         }
     }
 
@@ -1925,9 +1917,7 @@ void android_main(struct android_app* app) {
 
     EglInitExtensions();
 
-    appState.UseMultiview &=
-        (glExtensions.multi_view &&
-         vrapi_GetSystemPropertyInt(&appState.Java, VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE));
+    appState.UseMultiview &= glExtensions.multi_view;
 
     ALOGV("AppState UseMultiview : %d", appState.UseMultiview);
 
