@@ -17,7 +17,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../../Src \
 
 LOCAL_CFLAGS += -Wno-invalid-offsetof
 
-
 LOCAL_SRC_FILES		:= 	../../../Src/Appl.cpp \
 						../../../Src/System.cpp \
 						../../../Src/PackageFiles.cpp \
@@ -97,6 +96,9 @@ LOCAL_SRC_FILES		:= 	../../../Src/Appl.cpp \
  						../../../Src/GUI/UI/UIDiscreteSlider.cpp \
  						../../../Src/GUI/UI/UIKeyboard.cpp \
  						../../../Src/GUI/UI/UITextBox.cpp \
+ 						../../../Src/Input/ArmModel.cpp \
+ 						../../../Src/Input/HandModel.cpp \
+ 						../../../Src/Input/Skeleton.cpp \
 					 	../../../Src/Sound/SoundAssetMapping.cpp \
 						../../../Src/Sound/SoundEffectContext.cpp \
 						../../../Src/Sound/SoundPool.cpp

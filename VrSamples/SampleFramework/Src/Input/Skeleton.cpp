@@ -1,6 +1,6 @@
 /************************************************************************************
 
-Filename    :   OVR_Skeleton.cpp
+Filename    :   Skeleton.cpp
 Content     :   skeleton for arm model implementation
 Created     :   2/20/2017
 Authors     :   Jonathan E. Wright
@@ -9,8 +9,9 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 ************************************************************************************/
 
-#include "OVR_Skeleton.h"
 #include "OVR_Types.h"
+#include "Skeleton.h"
+
 using OVR::Posef;
 
 namespace OVRFW {
@@ -40,6 +41,7 @@ void ovrSkeleton::SetJoints(const std::vector<ovrJoint>& newJoints) {
     }
 
     /// Set World
+    WorldSpaceDirty = true;
     UpdateWorldFromLocal();
 }
 
@@ -51,7 +53,7 @@ void ovrSkeleton::UpdateWorldFromLocal() const {
     OVR_ASSERT(Joints.size() == WorldSpacePoses.size());
     for (int i = 0; i < (int)Joints.size(); ++i) {
         WorldSpacePoses[i] = (Joints[i].ParentIndex < 0)
-            ? Joints[i].Pose
+            ? LocalSpacePoses[i]
             : (WorldSpacePoses[Joints[i].ParentIndex] * LocalSpacePoses[i]);
     }
     WorldSpaceDirty = false;

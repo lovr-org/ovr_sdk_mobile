@@ -48,13 +48,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugReportCallback(
     const char* reportType = "Unknown";
     if ((msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) != 0) {
         reportType = "Error";
-    } else if ((msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) == 0) {
+    } else if ((msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) != 0) {
         reportType = "Warning";
-    } else if ((msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) == 0) {
+    } else if ((msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) != 0) {
         reportType = "Performance Warning";
-    } else if ((msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) == 0) {
+    } else if ((msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) != 0) {
         reportType = "Information";
-    } else if ((msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) == 0) {
+    } else if ((msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) != 0) {
         reportType = "Debug";
     }
 

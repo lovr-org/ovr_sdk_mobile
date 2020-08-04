@@ -1,6 +1,6 @@
 /************************************************************************************
 
-Filename    :   OVR_ArmModel.h
+Filename    :   ArmModel.h
 Content     :   An arm model for the tracked remote
 Created     :   2/20/2017
 Authors     :   Jonathan E. Wright
@@ -14,8 +14,10 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 #include "OVR_Types.h"
 #include "OVR_LogUtils.h"
+
 #include "VrApi_Types.h"
-#include "OVR_Skeleton.h"
+
+#include "Skeleton.h"
 
 namespace OVRFW {
 
@@ -25,7 +27,7 @@ class ovrArmModel {
 
     ovrArmModel();
 
-    void InitSkeleton();
+    void InitSkeleton(bool isLeft);
 
     void Update(
         const OVR::Posef& headPose,
@@ -35,6 +37,9 @@ class ovrArmModel {
         OVR::Posef& outPose);
 
     const ovrSkeleton& GetSkeleton() const {
+        return Skeleton;
+    }
+    ovrSkeleton& GetSkeleton() {
         return Skeleton;
     }
     const std::vector<ovrJoint>& GetTransformedJoints() const {

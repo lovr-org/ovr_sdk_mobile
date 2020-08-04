@@ -66,7 +66,6 @@ struct ovrApplFrameIn {
     ovrInputStateTrackedRemote LeftRemote;
     ovrInputStateTrackedRemote RightRemote;
     ovrInputStateTrackedRemote SingleHandRemote;
-    ovrInputStateGamepad GamePad;
     uint16_t SingleHandRemoteTrackpadMaxX = 0u;
     uint16_t SingleHandRemoteTrackpadMaxY = 0u;
     uint32_t AllButtons = 0u;
@@ -79,7 +78,6 @@ struct ovrApplFrameIn {
     bool LeftRemoteTracked = false;
     bool RightRemoteTracked = false;
     bool SingleHandRemoteTracked = false;
-    bool GamePadTracked = false;
     bool HeadsetIsMounted = true;
     bool LastFrameHeadsetIsMounted = true;
     std::vector<ovrKeyEvent> KeyEvents;
@@ -190,7 +188,7 @@ class ovrAppl {
     void AddTouchEvent(const int32_t action, const int32_t x, const int32_t y);
 
     // Handle VrApi system events.
-    void HandleVREvents(ovrApplFrameIn& in);
+    void HandleVrApiEvents(ovrApplFrameIn& in);
 
     // Handle VRAPI input updates.
     void HandleVRInputEvents(ovrApplFrameIn& in);
@@ -271,6 +269,15 @@ class ovrAppl {
     virtual void AppLostFocus();
     // Called when app re-gains focus
     virtual void AppGainedFocus();
+    // Called when VrApi event data was lost
+    virtual void AppDataLost();
+    // Called when the app gains visibility
+    virtual void AppVisibilityGained();
+    // Called when the app loses visibility
+    virtual void AppVisibilityLost();
+    // Called when any event other than those with a specific overloaded method
+    // is is received via vrapi_PollEvents
+    virtual void AppHandleVrApiEvent(const ovrEventHeader* event);
 
     //============================
     // Default helpers

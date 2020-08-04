@@ -1,6 +1,6 @@
 /************************************************************************************
 
-Filename    :   OVR_HandModel.h
+Filename    :   HandModel.h
 Content     :   A hand model for the tracked remote
 Created     :   8/20/2019
 Authors     :   Federico Schliemann
@@ -14,11 +14,11 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 #include "OVR_Types.h"
 #include "OVR_LogUtils.h"
+
 #include "VrApi_Types.h"
 #include "VrApi_Input.h"
-#include "OVR_Skeleton.h"
 
-#include "Model/ModelFile.h"
+#include "Skeleton.h"
 
 namespace OVRFW {
 

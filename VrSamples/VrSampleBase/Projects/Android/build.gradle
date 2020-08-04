@@ -7,7 +7,7 @@ android {
   defaultConfig {
     applicationId "com.oculus." + project.archivesBaseName
 
-    minSdkVersion 23
+    minSdkVersion 24
     targetSdkVersion 25
     compileSdkVersion 26
 

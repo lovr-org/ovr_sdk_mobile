@@ -49,7 +49,7 @@ public class MainActivity extends android.app.NativeActivity
     // See if we can read a file from sdcard ...
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
         != PackageManager.PERMISSION_GRANTED) {
-      Log.d(TAG, "onCreate - requesting necessary permissions ... ");
+      Log.d(TAG, "onCreate - requesting necessary permissions.");
       ActivityCompat.requestPermissions(
           this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 0);
     } else {
@@ -68,7 +68,7 @@ public class MainActivity extends android.app.NativeActivity
         case Manifest.permission.READ_EXTERNAL_STORAGE:
           {
             if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-              Log.d(TAG, "onRequestPermissionsResult permission GRANTED");
+              Log.d(TAG, "onRequestPermissionsResult: permission GRANTED");
               externalStoragePermissionGranted = true;
               runOnUiThread(
                   new Thread() {
@@ -78,7 +78,7 @@ public class MainActivity extends android.app.NativeActivity
                     }
                   });
             } else {
-              Log.d(TAG, "onRequestPermissionsResult permission DENIED");
+              Log.d(TAG, "onRequestPermissionsResult: permission DENIED");
               externalStoragePermissionGranted = false;
               nativeInitWithFileLoadPermissions(0);
             }

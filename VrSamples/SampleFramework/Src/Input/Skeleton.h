@@ -1,9 +1,9 @@
 /************************************************************************************
 
-Filename    :   OVR_Skeleton.h
-Content     :   skeleton for arm model implementation
+Filename    :   Skeleton.h
+Content     :   Skeleton for arm and hand model implementation
 Created     :   2/20/2017
-Authors     :   Jonathan E. Wright
+Authors     :   Jonathan E. Wright, Federico Schliemann
 
 Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All rights reserved.
 
@@ -46,8 +46,10 @@ class ovrSkeleton {
     const std::vector<OVR::Posef>& GetLocalSpacePoses() const {
         return LocalSpacePoses;
     }
-    const std::vector<OVR::Posef>& GetWorldSpacePoses() const {
-        UpdateWorldFromLocal();
+    const std::vector<OVR::Posef>& GetWorldSpacePoses(bool updateFromLocal = true) const {
+        if (updateFromLocal) {
+            UpdateWorldFromLocal();
+        }
         return WorldSpacePoses;
     }
     void SetJoints(const std::vector<ovrJoint>& newJoints);

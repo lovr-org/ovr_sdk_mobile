@@ -1,6 +1,6 @@
 /************************************************************************************
 
-Filename    :   OVR_HandModel.cpp
+Filename    :   HandModel.cpp
 Content     :   A hand model for the tracked remote
 Created     :   8/20/2019
 Authors     :   Federico Schliemann
@@ -9,7 +9,7 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 ************************************************************************************/
 
-#include "OVR_HandModel.h"
+#include "HandModel.h"
 
 using OVR::Matrix4f;
 using OVR::Posef;

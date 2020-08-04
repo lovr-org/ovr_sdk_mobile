@@ -8,7 +8,7 @@
 	<!-- Tell the system this app requires OpenGL ES 3.1. -->
 	<uses-feature android:glEsVersion="0x00030001" android:required="true"/>
 	<!-- Tell the system this app works in either 3dof or 6dof mode -->
-	<uses-feature android:name="android.hardware.vr.headtracking" android:required="false" />
+	<uses-feature android:name="android.hardware.vr.headtracking" android:required="true" />
 
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<!-- Network access needed for OVRMonitor -->
@@ -18,6 +18,8 @@
 
 	<application android:allowBackup="false" android:label="VR Compositor Native Activity">
 		<meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only"/>
+    <meta-data android:name="com.oculus.supportedDevices" android:value="all" />    
+    
 		<!-- The activity is the built-in NativeActivity framework class. -->
 		<!-- launchMode is set to singleTask because there should never be multiple copies of the app running. -->
 		<!-- Theme.Black.NoTitleBar.Fullscreen gives solid black instead of a (bad stereoscopic) gradient on app transition. -->

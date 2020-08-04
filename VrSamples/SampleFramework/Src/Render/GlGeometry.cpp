@@ -27,6 +27,22 @@ using OVR::Vector4f;
  */
 namespace OVRFW {
 
+static bool enableGeometryTransfom = false;
+static OVR::Matrix4f geometryTransfom = OVR::Matrix4f();
+GlGeometry::TransformScope::TransformScope(const OVR::Matrix4f m, bool enableTransfom) {
+    // store old
+    wasEnabled = enableGeometryTransfom;
+    previousTransform = geometryTransfom;
+    // set new
+    enableGeometryTransfom = enableTransfom;
+    geometryTransfom = m;
+}
+GlGeometry::TransformScope::~TransformScope() {
+    // restore
+    enableGeometryTransfom = wasEnabled;
+    geometryTransfom = previousTransform;
+}
+
 unsigned GlGeometry::IndexType = (sizeof(TriangleIndex) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
 
 template <typename _attrib_type_>
@@ -55,6 +71,39 @@ void GlGeometry::Create(const VertexAttribs& attribs, const std::vector<Triangle
     vertexCount = attribs.position.size();
     indexCount = indices.size();
 
+    const bool t = enableGeometryTransfom;
+
+    std::vector<OVR::Vector3f> position;
+    std::vector<OVR::Vector3f> normal;
+    std::vector<OVR::Vector3f> tangent;
+    std::vector<OVR::Vector3f> binormal;
+
+    /// we asked for incoming transfom
+    if (t) {
+        position.resize(attribs.position.size());
+        normal.resize(attribs.normal.size());
+        tangent.resize(attribs.position.size());
+        binormal.resize(attribs.binormal.size());
+
+        /// poor man's 3x3
+        OVR::Matrix4f nt = geometryTransfom.Transposed();
+
+        /// Positions use 4x4
+        for (size_t i = 0; i < attribs.position.size(); ++i) {
+            position[i] = geometryTransfom.Transform(attribs.position[i]);
+        }
+        /// TBN use 3x3
+        for (size_t i = 0; i < attribs.normal.size(); ++i) {
+            normal[i] = nt.Transform(attribs.normal[i]).Normalized();
+        }
+        for (size_t i = 0; i < attribs.tangent.size(); ++i) {
+            tangent[i] = nt.Transform(attribs.tangent[i]).Normalized();
+        }
+        for (size_t i = 0; i < attribs.binormal.size(); ++i) {
+            binormal[i] = nt.Transform(attribs.binormal[i]).Normalized();
+        }
+    }
+
     glGenBuffers(1, &vertexBuffer);
     glGenBuffers(1, &indexBuffer);
     glGenVertexArrays(1, &vertexArrayObject);
@@ -62,10 +111,14 @@ void GlGeometry::Create(const VertexAttribs& attribs, const std::vector<Triangle
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
     std::vector<uint8_t> packed;
-    PackVertexAttribute(packed, attribs.position, VERTEX_ATTRIBUTE_LOCATION_POSITION, GL_FLOAT, 3);
-    PackVertexAttribute(packed, attribs.normal, VERTEX_ATTRIBUTE_LOCATION_NORMAL, GL_FLOAT, 3);
-    PackVertexAttribute(packed, attribs.tangent, VERTEX_ATTRIBUTE_LOCATION_TANGENT, GL_FLOAT, 3);
-    PackVertexAttribute(packed, attribs.binormal, VERTEX_ATTRIBUTE_LOCATION_BINORMAL, GL_FLOAT, 3);
+    PackVertexAttribute(
+        packed, t ? position : attribs.position, VERTEX_ATTRIBUTE_LOCATION_POSITION, GL_FLOAT, 3);
+    PackVertexAttribute(
+        packed, t ? normal : attribs.normal, VERTEX_ATTRIBUTE_LOCATION_NORMAL, GL_FLOAT, 3);
+    PackVertexAttribute(
+        packed, t ? tangent : attribs.tangent, VERTEX_ATTRIBUTE_LOCATION_TANGENT, GL_FLOAT, 3);
+    PackVertexAttribute(
+        packed, t ? binormal : attribs.binormal, VERTEX_ATTRIBUTE_LOCATION_BINORMAL, GL_FLOAT, 3);
     PackVertexAttribute(packed, attribs.color, VERTEX_ATTRIBUTE_LOCATION_COLOR, GL_FLOAT, 4);
     PackVertexAttribute(packed, attribs.uv0, VERTEX_ATTRIBUTE_LOCATION_UV0, GL_FLOAT, 2);
     PackVertexAttribute(packed, attribs.uv1, VERTEX_ATTRIBUTE_LOCATION_UV1, GL_FLOAT, 2);
@@ -73,6 +126,7 @@ void GlGeometry::Create(const VertexAttribs& attribs, const std::vector<Triangle
         packed, attribs.jointIndices, VERTEX_ATTRIBUTE_LOCATION_JOINT_INDICES, GL_INT, 4);
     PackVertexAttribute(
         packed, attribs.jointWeights, VERTEX_ATTRIBUTE_LOCATION_JOINT_WEIGHTS, GL_FLOAT, 4);
+    // clang-format off
 
     glBufferData(GL_ARRAY_BUFFER, packed.size() * sizeof(packed[0]), packed.data(), GL_STATIC_DRAW);
 

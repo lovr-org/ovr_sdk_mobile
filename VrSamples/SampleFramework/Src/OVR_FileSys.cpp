@@ -71,14 +71,12 @@ bool ovrFileSys::GetPathIfValidPermission(
     permissionFlags_t permission,
     std::string& outPath) {
     std::string storageBasePath = "";
+    // Hard-coding these values for now
     if (storageType == EST_SECONDARY_EXTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // On Android-M, external sdcard path is dynamic and is queried through VRSVC.
-        storageBasePath += vrapi_GetSystemPropertyString(&java, VRAPI_SYS_PROP_EXT_SDCARD_PATH);
+        storageBasePath += "/sdcard/";
     } else if (storageType == EST_PRIMARY_EXTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // Hard-coding this for now
         storageBasePath += "/sdcard/";
     } else if (storageType == EST_INTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // Hard-coding this for now
         storageBasePath += "/data/data/";
     } else {
         // TODO ... figure this out.
@@ -100,13 +98,10 @@ void ovrFileSys::PushBackSearchPathIfValid(
     std::vector<std::string>& searchPaths) {
     std::string storageBasePath = "";
     if (storageType == EST_SECONDARY_EXTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // On Android-M, external sdcard path is dynamic and is queried through VRSVC.
-        storageBasePath += vrapi_GetSystemPropertyString(&java, VRAPI_SYS_PROP_EXT_SDCARD_PATH);
+        storageBasePath += "/sdcard/";
     } else if (storageType == EST_PRIMARY_EXTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // Hard-coding this for now
         storageBasePath += "/sdcard/";
     } else if (storageType == EST_INTERNAL_STORAGE && folderType == EFT_ROOT) {
-        // Hard-coding this for now
         storageBasePath += "/data/data/";
     } else {
         // TODO ... figure this out.

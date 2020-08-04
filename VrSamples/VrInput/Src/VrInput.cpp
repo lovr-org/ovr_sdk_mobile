@@ -480,9 +480,8 @@ ovrVrInput::ovrVrInput(
       ControllerModelOculusGoPreLit(nullptr),
       ControllerModelOculusTouchLeft(nullptr),
       ControllerModelOculusTouchRight(nullptr),
-      LastGamepadUpdateTimeInSeconds(0),
+            LastGamepadUpdateTimeInSeconds(0),
       Ribbons{nullptr, nullptr},
-      DeviceType(ovrDeviceType::VRAPI_DEVICE_TYPE_UNKNOWN),
       ActiveInputDeviceID(uint32_t(-1)) {}
 
 //==============================
@@ -500,7 +499,7 @@ ovrVrInput::~ovrVrInput() {
     ControllerModelOculusTouchLeft = nullptr;
     delete ControllerModelOculusTouchRight;
     ControllerModelOculusTouchRight = nullptr;
-    delete SoundEffectPlayer;
+        delete SoundEffectPlayer;
     SoundEffectPlayer = nullptr;
     delete RemoteBeamRenderer;
     RemoteBeamRenderer = nullptr;
@@ -721,6 +720,7 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         }
     }
 
+    
     {
         MaterialParms materialParms;
         materialParms.UseSrgbTextureFormats = false;
@@ -773,16 +773,8 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         pose.Translation = Vector3f(0.0f, 1.0f, -2.0f);
         Menu->SetMenuPose(pose);
 
-        DeviceType = (ovrDeviceType)vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_DEVICE_TYPE);
-        if (DeviceType >= VRAPI_DEVICE_TYPE_OCULUSGO_START &&
-            DeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_END) {
-            SetObjectText(*GuiSys, Menu, "panel", "VrInput (Oculus Go)");
-        } else if (
-            DeviceType >= VRAPI_DEVICE_TYPE_OCULUSQUEST_START &&
-            DeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-            SetObjectText(*GuiSys, Menu, "panel", "VrInput (Oculus Quest)");
-        }
-            }
+        SetObjectText(*GuiSys, Menu, "panel", "VrInput");
+    }
 
     LastGamepadUpdateTimeInSeconds = 0.0;
 
@@ -844,13 +836,13 @@ static void RenderBones(
     const uint16_t beamAtlasIndex,
     const Posef& worldPose,
     const std::vector<ovrJoint>& joints,
-    std::vector<ovrPairT<ovrParticleSystem::handle_t, ovrBeamRenderer::handle_t>>& handles) {
+    jointHandles_t& handles) {
     for (int i = 0; i < static_cast<int>(joints.size()); ++i) {
         const ovrJoint& joint = joints[i];
         const Posef jw = worldPose * joint.Pose;
 
-        if (!handles[i].First.IsValid()) {
-            handles[i].First = ps->AddParticle(
+        if (!handles[i].first.IsValid()) {
+            handles[i].first = ps->AddParticle(
                 frame,
                 jw.Translation,
                 0.0f,
@@ -865,7 +857,7 @@ static void RenderBones(
         } else {
             ps->UpdateParticle(
                 frame,
-                handles[i].First,
+                handles[i].first,
                 jw.Translation,
                 0.0f,
                 Vector3f(0.0f),
@@ -881,8 +873,8 @@ static void RenderBones(
         if (i > 0) {
             const ovrJoint& parentJoint = joints[joint.ParentIndex];
             const Posef pw = worldPose * parentJoint.Pose;
-            if (!handles[i].Second.IsValid()) {
-                handles[i].Second = br->AddBeam(
+            if (!handles[i].second.IsValid()) {
+                handles[i].second = br->AddBeam(
                     frame,
                     beamAtlas,
                     beamAtlasIndex,
@@ -894,7 +886,7 @@ static void RenderBones(
             } else {
                 br->UpdateBeam(
                     frame,
-                    handles[i].Second,
+                    handles[i].second,
                     beamAtlas,
                     beamAtlasIndex,
                     0.064f,
@@ -908,13 +900,13 @@ static void RenderBones(
 
 static void ResetBones(ovrParticleSystem* ps, ovrBeamRenderer* br, jointHandles_t& handles) {
     for (int i = 0; i < static_cast<int>(handles.size()); ++i) {
-        if (handles[i].First.IsValid()) {
-            ps->RemoveParticle(handles[i].First);
-            handles[i].First.Release();
+        if (handles[i].first.IsValid()) {
+            ps->RemoveParticle(handles[i].first);
+            handles[i].first.Release();
         }
-        if (handles[i].Second.IsValid()) {
-            br->RemoveBeam(handles[i].Second);
-            handles[i].Second.Release();
+        if (handles[i].second.IsValid()) {
+            br->RemoveBeam(handles[i].second);
+            handles[i].second.Release();
         }
     }
 }
@@ -1030,170 +1022,6 @@ void ovrVrInput::RenderRunningFrame(
                     }
                 }
             }
-        } else if (device->GetType() == ovrControllerType_Gamepad) {
-            if (deviceID != ovrDeviceIdType_Invalid) {
-                ovrInputStateGamepad gamepadInputState;
-                gamepadInputState.Header.ControllerType = ovrControllerType_Gamepad;
-                ovrResult result = vrapi_GetCurrentInputState(
-                    GetSessionObject(), deviceID, &gamepadInputState.Header);
-                if (result == ovrSuccess &&
-                    gamepadInputState.Header.TimeInSeconds >= LastGamepadUpdateTimeInSeconds) {
-                    LastGamepadUpdateTimeInSeconds = gamepadInputState.Header.TimeInSeconds;
-
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_l1", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_l2", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_r1", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_r2", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_x", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_y", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_a", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_b", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_dpad", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_lstick", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_rstick", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_back", true);
-                    SetObjectVisible(*GuiSys, Menu, "tertiary_input_header", true);
-
-                    if (gamepadInputState.Buttons & ovrButton_Enter) {
-                        SetObjectText(
-                            *GuiSys, Menu, "tertiary_input_header", "Gamepad (START PRESSED)");
-                    } else {
-                        SetObjectText(*GuiSys, Menu, "tertiary_input_header", "Gamepad");
-                    }
-
-                    if (deviceID == ActiveInputDeviceID) {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_header",
-                            Vector4f(0.25f, 0.75f, 0.25f, 1.0f));
-                    } else {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_header",
-                            Vector4f(0.25f, 0.25f, 0.75f, 1.0f));
-                    }
-
-                    SetObjectText(
-                        *GuiSys,
-                        Menu,
-                        "tertiary_input_lstick",
-                        "LStick x: %.2f y: %.2f",
-                        gamepadInputState.LeftJoystick.x,
-                        gamepadInputState.LeftJoystick.y);
-                    SetObjectText(
-                        *GuiSys,
-                        Menu,
-                        "tertiary_input_rstick",
-                        "RStick x: %.2f y: %.2f",
-                        gamepadInputState.RightJoystick.x,
-                        gamepadInputState.RightJoystick.y);
-                    SetObjectText(
-                        *GuiSys,
-                        Menu,
-                        "tertiary_input_l2",
-                        "L2 %.2f",
-                        gamepadInputState.LeftTrigger);
-                    SetObjectText(
-                        *GuiSys,
-                        Menu,
-                        "tertiary_input_r2",
-                        "R2 %.2f",
-                        gamepadInputState.RightTrigger);
-
-                    std::string dpadStr = "DPAD ";
-                    bool dpadset = false;
-                    if (gamepadInputState.Buttons & ovrButton_Up) {
-                        dpadset = true;
-                        dpadStr += " UP";
-                    }
-                    if (gamepadInputState.Buttons & ovrButton_Down) {
-                        dpadset = true;
-                        dpadStr += " DOWN";
-                    }
-                    if (gamepadInputState.Buttons & ovrButton_Left) {
-                        dpadset = true;
-                        dpadStr += " LEFT";
-                    }
-                    if (gamepadInputState.Buttons & ovrButton_Right) {
-                        dpadset = true;
-                        dpadStr += " RIGHT";
-                    }
-                    SetObjectText(*GuiSys, Menu, "tertiary_input_dpad", "%s", dpadStr.c_str());
-                    if (dpadset) {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_dpad",
-                            Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_LShoulder) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_l1", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_RShoulder) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_r1", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_X) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_x", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_Y) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_y", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_A) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_a", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_B) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_b", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_LThumb) {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_lstick",
-                            Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_RThumb) {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_rstick",
-                            Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.Buttons & ovrButton_Back) {
-                        SetObjectColor(
-                            *GuiSys,
-                            Menu,
-                            "tertiary_input_back",
-                            Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.LeftTrigger >= 1.0f) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_l2", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-
-                    if (gamepadInputState.RightTrigger >= 1.0f) {
-                        SetObjectColor(
-                            *GuiSys, Menu, "tertiary_input_r2", Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
-                    }
-                }
-            }
         } else {
             ALOG("MLBUState - Unexpected Device Type %d on %d", device->GetType(), i);
         }
@@ -1210,7 +1038,6 @@ void ovrVrInput::RenderRunningFrame(
     // Force ignoring motion
     vrFrameWithoutMove.LeftRemoteTracked = false;
     vrFrameWithoutMove.RightRemoteTracked = false;
-    vrFrameWithoutMove.GamePadTracked = false;
     vrFrameWithoutMove.SingleHandRemoteTracked = false;
 
     // Player movement.
@@ -1280,17 +1107,14 @@ void ovrVrInput::RenderRunningFrame(
 
             Matrix4f mat = Matrix4f(tracking.HeadPose.Pose);
 
-            float controllerPitch = 0.0f;
-            if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
-                ovrControllerCaps_ModelOculusTouch) {
-                controllerPitch = OVR::DegreeToRad(-90.0f);
-            }
-
             std::vector<ovrDrawSurface>& controllerSurfaces = trDevice.GetControllerSurfaces();
-            const float controllerYaw = OVR::DegreeToRad(180.0f);
+            float controllerYaw = 0.0f;
+            if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
+                ovrControllerCaps_ModelOculusGo) {
+                controllerYaw = OVR::DegreeToRad(180.0f);
+            }
             for (uint32_t k = 0; k < controllerSurfaces.size(); k++) {
-                controllerSurfaces[k].modelMatrix =
-                    mat * Matrix4f::RotationY(controllerYaw) * Matrix4f::RotationX(controllerPitch);
+                controllerSurfaces[k].modelMatrix = mat * Matrix4f::RotationY(controllerYaw);
             }
 
             trDevice.UpdateHaptics(GetSessionObject(), in);
@@ -1675,7 +1499,8 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(
     if ((inputTrackedRemoteCapabilities->ControllerCapabilities &
          ovrControllerCaps_ModelOculusGo) != 0) {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "Oculus Go Controller");
-    } else if (
+    }
+        else if (
         (inputTrackedRemoteCapabilities->ControllerCapabilities &
          ovrControllerCaps_ModelOculusTouch) != 0) {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "Oculus Touch Controller");
@@ -2094,15 +1919,15 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
                     *static_cast<ovrInputDevice_TrackedRemote*>(device);
                 std::vector<ovrDrawSurface>& controllerSurfaces = trDevice.GetControllerSurfaces();
                 ModelFile* modelFile = ControllerModelOculusGo;
-                if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
-                    ovrControllerCaps_ModelOculusTouch) {
-                    if (trDevice.GetHand() == ovrArmModel::HAND_LEFT) {
-                        modelFile = ControllerModelOculusTouchLeft;
-                    } else {
-                        modelFile = ControllerModelOculusTouchRight;
+                                    if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
+                        ovrControllerCaps_ModelOculusTouch) {
+                        if (trDevice.GetHand() == ovrArmModel::HAND_LEFT) {
+                            modelFile = ControllerModelOculusTouchLeft;
+                        } else {
+                            modelFile = ControllerModelOculusTouchRight;
+                        }
                     }
-                }
-
+                    
                 controllerSurfaces.clear();
                 for (auto& model : modelFile->Models) {
                     ovrDrawSurface controllerSurface;
@@ -2127,20 +1952,8 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
             break;
         }
 
-        case ovrControllerType_Gamepad: {
-            ALOG("MLBUConnect - Gamepad connected, ID = %u", capsHeader.DeviceID);
-            ovrInputGamepadCapabilities gamepadCapabilities;
-            gamepadCapabilities.Header = capsHeader;
-            result =
-                vrapi_GetInputDeviceCapabilities(GetSessionObject(), &gamepadCapabilities.Header);
-            if (result == ovrSuccess) {
-                device = ovrInputDevice_Gamepad::Create(*this, *GuiSys, *Menu, gamepadCapabilities);
-            }
-        } break;
-
         default:
-            ALOG("Unknown device connected!");
-            assert(false);
+            ALOG("Unknown device connected");
             return;
     }
 
@@ -2181,20 +1994,6 @@ void ovrVrInput::AppPaused(const OVRFW::ovrAppContext* /* context */) {
 }
 
 //==============================
-// ovrInputDevice_Gamepad::Create
-ovrInputDeviceBase* ovrInputDevice_Gamepad::Create(
-    OVRFW::ovrAppl& app,
-    OvrGuiSys& guiSys,
-    VRMenu& menu,
-    const ovrInputGamepadCapabilities& gamepadCapabilities) {
-    ovrInputDevice_Gamepad* device = new ovrInputDevice_Gamepad(gamepadCapabilities);
-
-    ALOG("MLBUConnect - Gamepad");
-
-    return device;
-}
-
-//==============================
 // ovrInputDevice_TrackedRemote::Create
 ovrInputDeviceBase* ovrInputDevice_TrackedRemote::Create(
     OVRFW::ovrAppl& app,
@@ -2227,7 +2026,7 @@ ovrInputDeviceBase* ovrInputDevice_TrackedRemote::Create(
             remoteCapabilities.TrackpadSizeX,
             remoteCapabilities.TrackpadSizeY);
 
-        device->ArmModel.InitSkeleton();
+        device->ArmModel.InitSkeleton(controllerHand == ovrArmModel::HAND_LEFT);
         device->JointHandles.resize(device->ArmModel.GetSkeleton().GetJoints().size());
 
         device->HapticState = 0;

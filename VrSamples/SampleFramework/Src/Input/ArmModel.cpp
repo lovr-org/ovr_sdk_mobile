@@ -1,6 +1,6 @@
 /************************************************************************************
 
-Filename    :   OVR_ArmModel.cpp
+Filename    :   ArmModel.cpp
 Content     :   An arm model for the tracked remote
 Created     :   2/20/2017
 Authors     :   Jonathan E. Wright
@@ -9,7 +9,8 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 ************************************************************************************/
 
-#include "OVR_ArmModel.h"
+#include "ArmModel.h"
+
 #include <algorithm>
 
 using OVR::Matrix4f;
@@ -29,47 +30,53 @@ ovrArmModel::ovrArmModel()
       ElbowJointIdx(-1),
       WristJointIdx(-1) {}
 
-void ovrArmModel::InitSkeleton() {
-    std::vector<ovrJoint>& joints = Skeleton.GetJoints();
+void ovrArmModel::InitSkeleton(bool isLeft) {
+    std::vector<ovrJoint> joints;
 
+    ///
+    const int noParent = -1;
+    const int headJointIdx = 0;
+
+    /// Set the joints needed to update the model
+    ClavicleJointIdx = 1;
+    ShoulderJointIdx = 2;
+    ElbowJointIdx = 3;
+    WristJointIdx = 4;
+
+    joints.push_back(ovrJoint("head", Vector4f(0.0f, 1.0f, 0.0f, 1.0f), Posef(), noParent));
     joints.push_back(ovrJoint(
         "neck",
         Vector4f(0.0f, 1.0f, 0.0f, 1.0f),
         Posef(Quatf(), Vector3f(0.0f, -0.2032f, 0.0f)),
-        static_cast<int>(joints.size()) - 1));
-    ClavicleJointIdx = static_cast<int>(joints.size());
+        headJointIdx));
     joints.push_back(ovrJoint(
         "clavicle",
         Vector4f(0.0f, 1.0f, 0.0f, 1.0f),
-        Posef(Quatf(), Vector3f(0.2286f, 0.0f, 0.0f)),
-        static_cast<int>(joints.size()) - 1));
-    ShoulderJointIdx = static_cast<int>(joints.size());
+        Posef(Quatf(), Vector3f((isLeft ? -0.2286f : 0.2286f), 0.0f, 0.0f)),
+        ClavicleJointIdx));
     joints.push_back(ovrJoint(
         "shoulder",
         Vector4f(1.0f, 0.0f, 1.0f, 1.0f),
         Posef(Quatf(), Vector3f(0.0f, -0.2441f, 0.02134f)),
-        static_cast<int>(joints.size()) - 1));
-    ElbowJointIdx = static_cast<int>(joints.size());
+        ShoulderJointIdx));
     joints.push_back(ovrJoint(
         "elbow",
         Vector4f(1.0f, 0.0f, 0.0f, 1.0f),
         Posef(Quatf(), Vector3f(0.0f, 0.0f, -0.3048f)),
-        static_cast<int>(joints.size()) - 1));
-    WristJointIdx = static_cast<int>(joints.size());
+        3));
     joints.push_back(ovrJoint(
         "wrist",
         Vector4f(1.0f, 1.0f, 0.0f, 1.0f),
         Posef(Quatf(), Vector3f(0.0f, 0.0f, -0.0762f)),
-        static_cast<int>(joints.size()) - 1));
+        ElbowJointIdx));
     joints.push_back(ovrJoint(
         "hand",
         Vector4f(1.0f, 1.0f, 0.0f, 1.0f),
         Posef(Quatf(), Vector3f(0.0f, 0.0381f, -0.0381f)),
-        static_cast<int>(joints.size()) - 1));
+        WristJointIdx));
 
-    TransformedJoints.resize(joints.size());
-    // copy over names and parent indices, etc.
-    TransformedJoints = joints;
+    Skeleton.SetJoints(joints);
+    TransformedJoints = Skeleton.GetJoints();
 }
 
 void ovrArmModel::Update(
@@ -136,13 +143,6 @@ void ovrArmModel::Update(
     }
 
     FootPose = Posef(Quatf(Vector3f(0.0f, 1.0f, 0.0f), TorsoYaw), eyeMatrix.GetTranslation());
-
-    const float handSign = (handedness == HAND_LEFT ? -1.0f : 1.0f);
-    Skeleton.GetJoints()[ClavicleJointIdx].Pose.Translation.x =
-        fabsf(Skeleton.GetJoints()[ClavicleJointIdx].Pose.Translation.x) * handSign;
-
-    std::vector<ovrJointMod> jointMods;
-
     Quatf remoteRot(remotePose.Rotation);
 
     const float MAX_ROLL = MATH_FLOAT_PIOVER2;
@@ -168,15 +168,17 @@ void ovrArmModel::Update(
     Quatf elbowRot = Quatf().Slerp(localRemoteRot, 0.6f);
     Quatf wristRot = Quatf().Slerp(localRemoteRot, 0.4f);
 
-    jointMods.push_back(
-        ovrJointMod(ovrJointMod::MOD_LOCAL, ShoulderJointIdx, Posef(shoulderRot, Vector3f(0.0f))));
-    jointMods.push_back(
-        ovrJointMod(ovrJointMod::MOD_LOCAL, ElbowJointIdx, Posef(elbowRot, Vector3f(0.0f))));
-    jointMods.push_back(
-        ovrJointMod(ovrJointMod::MOD_LOCAL, WristJointIdx, Posef(wristRot, Vector3f(0.0f))));
+    /// Pose the skeleton
+    Skeleton.UpdateLocalRotation(shoulderRot, ShoulderJointIdx);
+    Skeleton.UpdateLocalRotation(elbowRot, ElbowJointIdx);
+    Skeleton.UpdateLocalRotation(wristRot, WristJointIdx);
+    /// Move the skeleton root
+    Skeleton.TransformLocal(FootPose, 0);
 
-    ovrSkeleton::Transform(FootPose, Skeleton.GetJoints(), jointMods, TransformedJoints);
-
+    /// Update the joints for beam rendering
+    for (int i = 0; i < (int)TransformedJoints.size(); ++i) {
+        TransformedJoints[i].Pose = Skeleton.GetWorldSpacePoses()[i];
+    }
     outPose = TransformedJoints[static_cast<int>(TransformedJoints.size()) - 1].Pose;
 }
 

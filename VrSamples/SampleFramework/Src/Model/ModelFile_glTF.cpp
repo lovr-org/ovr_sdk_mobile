@@ -1686,12 +1686,15 @@ bool LoadModelFile_glTF_Json(
                                 loaded = false;
                             }
 
-                            if (static_cast<int>(newSkin.jointIndexes.size()) > MAX_JOINTS) {
+                            /// Up the number here
+                            const int maxJointsAllowed = 96; /// MAX_JOINTS
+
+                            if (static_cast<int>(newSkin.jointIndexes.size()) > maxJointsAllowed) {
                                 ALOGW(
                                     "%d joints on skin on model: %s, currently only %d allowed ",
                                     static_cast<int>(newSkin.jointIndexes.size()),
                                     modelFile.FileName.c_str(),
-                                    MAX_JOINTS);
+                                    maxJointsAllowed);
                                 loaded = false;
                             }
 

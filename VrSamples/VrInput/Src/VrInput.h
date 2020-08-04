@@ -14,9 +14,10 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include <string>
 #include <memory>
 
+#include "VrApi_Input.h"
+
 #include "Appl.h"
 #include "OVR_FileSys.h"
-
 #include "Model/SceneView.h"
 #include "Render/SurfaceRender.h"
 #include "Render/DebugLines.h"
@@ -25,10 +26,7 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include "Render/ParticleSystem.h"
 #include "Render/Ribbon.h"
 #include "GUI/GuiSys.h"
-
-#include "VrApi_Input.h"
-
-#include "OVR_ArmModel.h"
+#include "Input/ArmModel.h"
 
 namespace OVRFW {
 
@@ -38,7 +36,7 @@ class ovrParticleSystem;
 class ovrTextureAtlas;
 class ovrBeamRenderer;
 
-typedef std::vector<ovrPairT<ovrParticleSystem::handle_t, ovrBeamRenderer::handle_t>>
+typedef std::vector<std::pair<ovrParticleSystem::handle_t, ovrBeamRenderer::handle_t>>
     jointHandles_t;
 
 //==============================================================
@@ -141,42 +139,6 @@ class ovrInputDevice_TrackedRemote : public ovrInputDeviceBase {
 };
 
 //==============================================================
-// ovrInputDevice_Gamepad
-class ovrInputDevice_Gamepad : public ovrInputDeviceBase {
-   public:
-    ovrInputDevice_Gamepad(const ovrInputGamepadCapabilities& caps)
-        : ovrInputDeviceBase(), Caps(caps) {}
-
-    virtual ~ovrInputDevice_Gamepad() {}
-
-    static ovrInputDeviceBase* Create(
-        OVRFW::ovrAppl& app,
-        OvrGuiSys& guiSys,
-        VRMenu& menu,
-        const ovrInputGamepadCapabilities& gamepadCapabilities);
-
-    virtual const ovrInputCapabilityHeader* GetCaps() const override {
-        return &Caps.Header;
-    }
-    virtual ovrControllerType GetType() const override {
-        return Caps.Header.Type;
-    }
-    virtual ovrDeviceID GetDeviceID() const override {
-        return Caps.Header.DeviceID;
-    }
-    virtual const char* GetName() const override {
-        return "Gamepad";
-    }
-
-    const ovrInputGamepadCapabilities& GetGamepadCaps() const {
-        return Caps;
-    }
-
-   private:
-    ovrInputGamepadCapabilities Caps;
-};
-
-//==============================================================
 // ovrControllerRibbon
 class ovrControllerRibbon {
    public:
@@ -266,7 +228,7 @@ class ovrVrInput : public OVRFW::ovrAppl {
     ModelFile* ControllerModelOculusGoPreLit;
     ModelFile* ControllerModelOculusTouchLeft;
     ModelFile* ControllerModelOculusTouchRight;
-
+    
     OVR::Vector3f SpecularLightDirection;
     OVR::Vector3f SpecularLightColor;
     OVR::Vector3f AmbientLightColor;
@@ -286,8 +248,6 @@ class ovrVrInput : public OVRFW::ovrAppl {
     std::vector<ovrInputDeviceBase*> InputDevices;
 
     ovrControllerRibbon* Ribbons[ovrArmModel::HAND_MAX];
-
-    ovrDeviceType DeviceType;
 
     uint32_t ActiveInputDeviceID;
 

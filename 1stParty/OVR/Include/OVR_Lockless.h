@@ -211,82 +211,130 @@ class LocklessUpdater2 {
     T Slots[2];
 };
 
+struct LocklessDataReaderState {
+    int32_t CountMasked = 0;
+    int32_t ReadIndex = 0;
+    int32_t BufferSize = 0;
+};
+
+struct LocklessDataWriterState {
+    int32_t WriteIndex = 0;
+};
+
 class LocklessDataHelper {
    public:
-    LocklessDataHelper() : UpdateBegin(0), UpdateEnd(0), DataSizes{0, 0} {}
+#ifdef LOCKLESS_DATA_HELPER_CHECK_HASH
+    LocklessDataHelper() : Count(0), DataSizes{0, 0}, Hashes{0, 0} {}
 
-    bool GetData(const uint8_t** buffers, uint8_t* outData, int32_t& outSize) const {
-        // Copy the state out, then retry with the alternate slot
-        // if we determine that our copy may have been partially
-        // stepped on by a new update.
-        int begin, end, final;
+    using HashType = uint64_t;
 
+    static HashType HashBytes(const uint8_t* data, const size_t size) {
+        HashType hash = 5381;
+
+        for (size_t i = 0; i < size; ++i) {
+            hash = ((hash << 5) + hash) + data[i];
+        }
+
+        return hash;
+    }
+#else
+    LocklessDataHelper() : Count(0), DataSizes{0, 0} {}
+#endif
+
+    inline void GetDataBegin(LocklessDataReaderState& locker) const {
+        // Atomically load Count into a temporary variable (locker.CountMasked), to determine the
+        // index of the last-written buffer.
+        locker.CountMasked = Count.load(std::memory_order_acquire) & ~int32_t(1);
+        locker.ReadIndex = (locker.CountMasked >> 1) & 1;
+        locker.BufferSize = DataSizes[locker.ReadIndex];
+    }
+
+    inline bool GetDataEnd(LocklessDataReaderState& locker) const {
+        // After copying the data from that buffer, Count is atomically loaded into another
+        // temporary variable (c2). If the count changed at all, we know that a write to the
+        // buffers occured. Depending on the number of increments between c and c2, we can tell
+        // which buffers were written to. Our read is ok as long as the write was to the buffer
+        // we were not reading from.
+        const int c2 = Count.load(std::memory_order_acquire);
+        // * ( c2 - c ) == 0, no writes occured while the buffer was read the data is good.
+        // * ( c2 - c ) == 1, a write started, but it was in the buffer that wasn't read, so the
+        //   data read from the buffer is good.
+        // * ( c2 - c ) == 2, a write ended, but it was in the buffer that wasn't read, so the
+        //   data read from the buffer is good.
+        // * ( c2 - c ) == 3, a new write began in the buffer that was read, so the buffer is
+        //   likely to have partial data in it and must be re-read.
+        // * ( c2 - c ) > 3, multiple writes happened, at least one of which overwrote the
+        //   buffer that was  read, so the buffer may have partial data and should be re-read.
+        return ((c2 - locker.CountMasked) < 3);
+    }
+
+    inline bool GetData(const uint8_t** buffers, uint8_t* outData, int32_t& outSize) const {
         const int32_t inSize = outSize;
         outSize = 0;
 
         for (;;) {
-            end = UpdateEnd.load(std::memory_order_acquire);
-            const int endSlotIndex = end & 1;
-            if (DataSizes[endSlotIndex] > inSize) {
-                return false;
-            }
-            std::memcpy(outData, buffers[endSlotIndex], DataSizes[endSlotIndex]);
-
-            // Manually insert an memory barrier here in order to ensure that
-            // memory access between Slots[] and UpdateBegin are properly ordered
-#if defined(OVR_CC_MSVC)
-            MemoryBarrier();
-#else
-            __sync_synchronize();
-#endif
-
-            begin = UpdateBegin.load(std::memory_order_acquire);
-            if (begin == end) {
-                outSize = DataSizes[endSlotIndex];
-                return true;
-            }
-
-            // The producer is potentially blocked while only having partially
-            // written the update, so copy out the other slot.
-            const int beginSlotIndex = (begin & 1) ^ 1;
-
-            if (DataSizes[beginSlotIndex] > inSize) {
+            LocklessDataReaderState locker;
+            GetDataBegin(locker);
+            if (locker.BufferSize > inSize) {
                 return false;
             }
 
-            std::memcpy(outData, buffers[beginSlotIndex], DataSizes[beginSlotIndex]);
-
-#if defined(OVR_CC_MSVC)
-            MemoryBarrier();
-#else
-            __sync_synchronize();
+            std::memcpy(outData, buffers[locker.ReadIndex], locker.BufferSize);
+#ifdef LOCKLESS_DATA_HELPER_CHECK_HASH
+            const HashType expectedHash = Hashes[locker.ReadIndex];
 #endif
 
-            final = UpdateBegin.load(std::memory_order_acquire);
-            if (final == begin) {
-                outSize = DataSizes[beginSlotIndex];
+            if (GetDataEnd(locker)) {
+#ifdef LOCKLESS_DATA_HELPER_CHECK_HASH
+                const HashType hash = HashBytes(outData, locker.BufferSize);
+                if (hash != expectedHash) {
+                    OVR_WARN(
+                        "GetData hash mismatch: Size: %i, %llu != %llu",
+                        (int)locker.BufferSize,
+                        (unsigned long long int)hash,
+                        (unsigned long long int)expectedHash);
+                    return false;
+                }
+#endif
+                outSize = locker.BufferSize;
                 return true;
             }
-
-            // The producer completed the last update and started a new one before
-            // we got it copied out, so try fetching the current buffer again.
         }
     }
 
-    void SetData(uint8_t** buffers, const uint8_t* data, const int32_t size) {
-        const int slot = UpdateBegin.fetch_add(1, std::memory_order_seq_cst) & 1;
-        // Write to (slot ^ 1) because fetch_add returns 'previous' value before add.
-        const int slotIndex = slot ^ 1;
-
-        DataSizes[slotIndex] = size;
-        std::memcpy(buffers[slotIndex], data, size);
-
-        UpdateEnd.fetch_add(1, std::memory_order_seq_cst);
+    inline void SetDataBegin(LocklessDataWriterState& writer) {
+        writer.WriteIndex = ((Count.fetch_add(1) >> 1) + 1) & 1;
     }
 
-    std::atomic<int32_t> UpdateBegin;
-    std::atomic<int32_t> UpdateEnd;
+    inline void
+    SetDataEnd(LocklessDataWriterState& writer, const uint8_t* data, const int32_t size) {
+        DataSizes[writer.WriteIndex] = size;
+
+#ifdef LOCKLESS_DATA_HELPER_CHECK_HASH
+        Hashes[writer.WriteIndex] = HashBytes(data, size);
+#endif
+
+        // memory barrier with release ensures that no write to memory before the fence
+        // can be reordered with a memory operation occurring after the fence.
+        std::atomic_thread_fence(std::memory_order_release);
+        // atomic increment
+        Count.fetch_add(1);
+    }
+
+    inline void SetData(uint8_t** buffers, const uint8_t* data, const int32_t size) {
+        LocklessDataWriterState writer;
+        SetDataBegin(writer);
+
+        std::memcpy(buffers[writer.WriteIndex], data, size);
+
+        SetDataEnd(writer, data, size);
+    }
+
+    std::atomic<int32_t> Count;
     std::atomic<int32_t> DataSizes[2];
+#ifdef LOCKLESS_DATA_HELPER_CHECK_HASH
+    std::atomic<HashType> Hashes[2];
+#endif
 };
 
 // Same as LocklessUpdater, but allows you to specify arbitrarily sized copies

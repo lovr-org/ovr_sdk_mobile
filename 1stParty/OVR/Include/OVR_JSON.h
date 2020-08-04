@@ -962,7 +962,7 @@ class JSON {
         if (fmt)
             len += depth;
 
-        for (const std::shared_ptr<JSON> child : Children) {
+        for (const auto& child : Children) {
             names[i] = str = PrintString(child->Name.c_str());
             entries[i++] = ret = child->PrintValue(depth, fmt);
 

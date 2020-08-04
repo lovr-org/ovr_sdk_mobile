@@ -504,21 +504,22 @@ ovrLocale::Create(JNIEnv& jni_, jobject activity_, char const* name, ovrFileSys*
 	}
 #endif
 
-    jclass localeClass = jni_.FindClass("java/util/Locale"); // class pointer of Locale
-    if (localeClass == NULL) {
+    JavaClass localeClass(&jni_, jni_.FindClass("java/util/Locale")); // class pointer of Locale
+    if (localeClass.GetJClass() == NULL) {
         ALOG("ovrLocale::Create - localeClass == NULL");
     } else {
         jmethodID getDefaultMethod =
-            jni_.GetStaticMethodID(localeClass, "getDefault", "()Ljava/util/Locale;");
+            jni_.GetStaticMethodID(localeClass.GetJClass(), "getDefault", "()Ljava/util/Locale;");
         if (getDefaultMethod == NULL) {
             ALOG("ovrLocale::Create - getDefaultMethod == NULL");
         } else {
-            jobject defaultLocale = jni_.CallStaticObjectMethod(localeClass, getDefaultMethod);
+            jobject defaultLocale =
+                jni_.CallStaticObjectMethod(localeClass.GetJClass(), getDefaultMethod);
             if (defaultLocale == NULL) {
                 ALOG("ovrLocale::Create - defaultLocale == NULL");
             } else {
-                jmethodID getLanguageMethod =
-                    jni_.GetMethodID(localeClass, "getLanguage", "()Ljava/lang/String;");
+                jmethodID getLanguageMethod = jni_.GetMethodID(
+                    localeClass.GetJClass(), "getLanguage", "()Ljava/lang/String;");
                 if (getLanguageMethod == NULL) {
                     ALOG("ovrLocale::Create - getLanguageMethod == NULL");
                 } else {
