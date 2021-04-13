@@ -42,177 +42,6 @@ static const int NUM_RIBBON_POINTS = 32;
 
 static const Vector4f LASER_COLOR(0.0f, 1.0f, 1.0f, 1.0f);
 
-static const char* PrelitVertexShaderSrc = R"glsl(
-attribute highp vec4 Position;
-attribute highp vec2 TexCoord;
-
-varying lowp vec3 oEye;
-varying highp vec2 oTexCoord;
-
-vec3 transposeMultiply( mat4 m, vec3 v )
-{
-	return vec3(
-		m[0].x * v.x + m[0].y * v.y + m[0].z * v.z,
-		m[1].x * v.x + m[1].y * v.y + m[1].z * v.z,
-		m[2].x * v.x + m[2].y * v.y + m[2].z * v.z );
-}
-
-void main()
-{
-	gl_Position = TransformVertex( Position );
-	oTexCoord = TexCoord;
-	vec3 eye = transposeMultiply( sm.ViewMatrix[VIEW_ID], -vec3( sm.ViewMatrix[VIEW_ID][3] ) );
-	oEye = eye - vec3( ModelMatrix * Position );
-}
-)glsl";
-
-static const char* PrelitFragmentShaderSrc = R"glsl(
-uniform sampler2D Texture0;
-
-varying highp vec2 oTexCoord;
-varying lowp vec3 oEye;
-
-void main()
-{
-	gl_FragColor = texture2D( Texture0, oTexCoord );
-	lowp vec3 eyeScaled = oEye * 5.0f;
-	lowp float eyeDistSq = eyeScaled.x * eyeScaled.x + eyeScaled.y * eyeScaled.y + eyeScaled.z * eyeScaled.z;
-	gl_FragColor.w = eyeDistSq - 0.5f;
-}
-)glsl";
-
-static const char* SpecularVertexShaderSrc = R"glsl(
-attribute lowp vec4 Position;
-attribute lowp vec3 Normal;
-attribute lowp vec2 TexCoord;
-
-varying lowp vec3 oEye;
-varying lowp vec3 oNormal;
-varying lowp vec2 oTexCoord;
-varying lowp float oFade;
-
-vec3 multiply( mat4 m, vec3 v )
-{
-	return vec3(
-		m[0].x * v.x + m[1].x * v.y + m[2].x * v.z,
-		m[0].y * v.x + m[1].y * v.y + m[2].y * v.z,
-		m[0].z * v.x + m[1].z * v.y + m[2].z * v.z );
-}
-
-vec3 transposeMultiply( mat4 m, vec3 v )
-{
-	return vec3(
-		m[0].x * v.x + m[0].y * v.y + m[0].z * v.z,
-		m[1].x * v.x + m[1].y * v.y + m[1].z * v.z,
-		m[2].x * v.x + m[2].y * v.y + m[2].z * v.z );
-}
-
-void main()
-{
-	gl_Position = TransformVertex( Position );
-	vec3 eye = transposeMultiply( sm.ViewMatrix[VIEW_ID], -vec3( sm.ViewMatrix[VIEW_ID][3] ) );
-	oEye = eye - vec3( ModelMatrix * Position );
-	oNormal = multiply( ModelMatrix, Normal );
-	oTexCoord = TexCoord;
-
-	// fade controller if it is too close to the camera
-	lowp float FadeDistanceScale = 5.0f;
-	lowp float FadeDistanceOffset = 0.525f;
-	oFade = ( sm.ViewMatrix[0] * ( ModelMatrix * Position ) ).z;
-	oFade *= FadeDistanceScale;
-	oFade *= oFade;
-	oFade -= FadeDistanceOffset;
-	oFade = clamp( oFade, 0.0f, 1.0f);
-}
-)glsl";
-
-static const char* SpecularFragmentWithHighlight = R"glsl(
-uniform sampler2D Texture0;
-uniform lowp vec3 SpecularLightDirection;
-uniform lowp vec3 SpecularLightColor;
-uniform lowp vec3 AmbientLightColor;
-uniform sampler2D ButtonMaskTexture;
-uniform lowp vec4 HighLightMask;
-uniform lowp vec3 HighLightColor;
-
-varying lowp vec3 oEye;
-varying lowp vec3 oNormal;
-varying lowp vec2 oTexCoord;
-varying lowp float oFade;
-
-void main()
-{
-	lowp vec4 hightLightFilter = texture2D( ButtonMaskTexture, oTexCoord );
-	lowp float highLight = hightLightFilter.x * HighLightMask.x;
-	highLight += hightLightFilter.y * HighLightMask.y;
-	highLight += hightLightFilter.z * HighLightMask.z;
-	highLight += hightLightFilter.w * HighLightMask.w;
-
-	lowp vec3 eyeDir = normalize( oEye.xyz );
-	lowp vec3 Normal = normalize( oNormal );
-	lowp vec3 reflectionDir = dot( eyeDir, Normal ) * 2.0 * Normal - eyeDir;
-	lowp vec4 diffuse = texture2D( Texture0, oTexCoord );
-	lowp vec3 ambientValue = diffuse.xyz * AmbientLightColor;
-
-	lowp float nDotL = max( dot( Normal , SpecularLightDirection ), 0.0 );
-	lowp vec3 diffuseValue = diffuse.xyz * SpecularLightColor * nDotL;
-
-	lowp float specularPower = 1.0f - diffuse.a;
-	specularPower = specularPower * specularPower;
-
-	lowp vec3 H = normalize( SpecularLightDirection + eyeDir );
-	lowp float nDotH = max( dot( Normal, H ), 0.0 );
-	lowp float specularIntensity = pow( nDotH, 64.0f * ( specularPower ) ) * specularPower;
-	lowp vec3 specularValue = specularIntensity * SpecularLightColor;
-
-	lowp vec3 controllerColor = diffuseValue + ambientValue + specularValue;
-	gl_FragColor.xyz = highLight * HighLightColor + (1.0f - highLight) * controllerColor;
-
-	// fade controller if it is too close to the camera
-	gl_FragColor.w = oFade;
-}
-)glsl";
-
-static const char* SpecularFragmentShaderSrc = R"glsl(
-uniform sampler2D Texture0;
-uniform lowp vec3 SpecularLightDirection;
-uniform lowp vec3 SpecularLightColor;
-uniform lowp vec3 AmbientLightColor;
-uniform sampler2D ButtonMaskTexture;
-
-varying lowp vec3 oEye;
-varying lowp vec3 oNormal;
-varying lowp vec2 oTexCoord;
-varying lowp float oFade;
-
-void main()
-{
-
-	lowp vec3 eyeDir = normalize( oEye.xyz );
-	lowp vec3 Normal = normalize( oNormal );
-	lowp vec3 reflectionDir = dot( eyeDir, Normal ) * 2.0 * Normal - eyeDir;
-	lowp vec4 diffuse = texture2D( Texture0, oTexCoord );
-	lowp vec3 ambientValue = diffuse.xyz * AmbientLightColor;
-
-	lowp float nDotL = max( dot( Normal , SpecularLightDirection ), 0.0 );
-	lowp vec3 diffuseValue = diffuse.xyz * SpecularLightColor * nDotL;
-
-	lowp float specularPower = 1.0f - diffuse.a;
-	specularPower = specularPower * specularPower;
-
-	lowp vec3 H = normalize( SpecularLightDirection + eyeDir );
-	lowp float nDotH = max( dot( Normal, H ), 0.0 );
-	lowp float specularIntensity = pow( nDotH, 64.0f * ( specularPower ) ) * specularPower;
-	lowp vec3 specularValue = specularIntensity * SpecularLightColor;
-
-	lowp vec3 controllerColor = diffuseValue + ambientValue + specularValue;
-	gl_FragColor.xyz = controllerColor;
-
-	// fade controller if it is too close to the camera
-	gl_FragColor.w = oFade;
-}
-)glsl";
-
 static const char* OculusTouchVertexShaderSrc = R"glsl(
 attribute highp vec4 Position;
 attribute highp vec3 Normal;
@@ -455,13 +284,7 @@ ovrVrInput::ovrVrInput(
     const int32_t renderThreadTid,
     const int cpuLevel,
     const int gpuLevel)
-    : ovrAppl(
-          mainThreadTid,
-          renderThreadTid,
-          cpuLevel,
-          gpuLevel,
-          true /* useMultiView */,
-          true /* overrideBackButtons */),
+    : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMultiView */),
       RenderState(RENDER_STATE_LOADING),
       FileSys(nullptr),
       DebugLines(nullptr),
@@ -476,8 +299,6 @@ ovrVrInput::ovrVrInput(
       LaserPointerBeamHandle(),
       LaserPointerParticleHandle(),
       LaserHit(false),
-      ControllerModelOculusGo(nullptr),
-      ControllerModelOculusGoPreLit(nullptr),
       ControllerModelOculusTouchLeft(nullptr),
       ControllerModelOculusTouchRight(nullptr),
             LastGamepadUpdateTimeInSeconds(0),
@@ -491,10 +312,6 @@ ovrVrInput::~ovrVrInput() {
         delete Ribbons[i];
         Ribbons[i] = nullptr;
     }
-    delete ControllerModelOculusGo;
-    ControllerModelOculusGo = nullptr;
-    delete ControllerModelOculusGoPreLit;
-    ControllerModelOculusGoPreLit = nullptr;
     delete ControllerModelOculusTouchLeft;
     ControllerModelOculusTouchLeft = nullptr;
     delete ControllerModelOculusTouchRight;
@@ -555,27 +372,6 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
 
     GuiSys->Init(FileSys, *SoundEffectPlayer, fontName.c_str(), DebugLines);
 
-    static ovrProgramParm PreLitUniformParms[] = {
-        {"Texture0", ovrProgramParmType::TEXTURE_SAMPLED},
-    };
-
-    static ovrProgramParm LitUniformParms[] = {
-        {"Texture0", ovrProgramParmType::TEXTURE_SAMPLED},
-        {"SpecularLightDirection", ovrProgramParmType::FLOAT_VECTOR3},
-        {"SpecularLightColor", ovrProgramParmType::FLOAT_VECTOR3},
-        {"AmbientLightColor", ovrProgramParmType::FLOAT_VECTOR3},
-    };
-
-    static ovrProgramParm LitWithHighlightUniformParms[] = {
-        {"Texture0", ovrProgramParmType::TEXTURE_SAMPLED},
-        {"SpecularLightDirection", ovrProgramParmType::FLOAT_VECTOR3},
-        {"SpecularLightColor", ovrProgramParmType::FLOAT_VECTOR3},
-        {"AmbientLightColor", ovrProgramParmType::FLOAT_VECTOR3},
-        {"ButtonMaskTexture", ovrProgramParmType::TEXTURE_SAMPLED},
-        {"HighLightMask", ovrProgramParmType::FLOAT_VECTOR4},
-        {"HighLightColor", ovrProgramParmType::FLOAT_VECTOR3},
-    };
-
     static ovrProgramParm OculusTouchUniformParms[] = {
         {"Texture0", ovrProgramParmType::TEXTURE_SAMPLED},
         {"SpecularLightDirection", ovrProgramParmType::FLOAT_VECTOR3},
@@ -589,78 +385,11 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
     HighLightMask = Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
     HighLightColor = Vector3f(1.0f, 0.55f, 0.0f) * 1.5f;
 
-    ProgSingleTexture = OVRFW::GlProgram::Build(
-        PrelitVertexShaderSrc,
-        PrelitFragmentShaderSrc,
-        PreLitUniformParms,
-        sizeof(PreLitUniformParms) / sizeof(ovrProgramParm));
-
-    ProgLitSpecularWithHighlight = GlProgram::Build(
-        SpecularVertexShaderSrc,
-        SpecularFragmentWithHighlight,
-        LitWithHighlightUniformParms,
-        sizeof(LitWithHighlightUniformParms) / sizeof(ovrProgramParm));
-
-    ProgLitSpecular = GlProgram::Build(
-        SpecularVertexShaderSrc,
-        SpecularFragmentShaderSrc,
-        LitUniformParms,
-        sizeof(LitUniformParms) / sizeof(ovrProgramParm));
-
     ProgOculusTouch = GlProgram::Build(
         OculusTouchVertexShaderSrc,
         OculusTouchFragmentShaderSrc,
         OculusTouchUniformParms,
         sizeof(OculusTouchUniformParms) / sizeof(ovrProgramParm));
-
-    {
-        ModelGlPrograms programs;
-        const char* controllerModelFile = "apk:///assets/oculusgo_controller.ovrscene";
-        programs.ProgSingleTexture = &ProgLitSpecularWithHighlight;
-        programs.ProgBaseColorPBR = &ProgLitSpecularWithHighlight;
-        programs.ProgLightMapped = &ProgLitSpecularWithHighlight;
-        MaterialParms materials;
-        ControllerModelOculusGo =
-            LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
-
-        if (ControllerModelOculusGo == NULL ||
-            static_cast<int>(ControllerModelOculusGo->Models.size()) < 1) {
-            ALOGE_FAIL("Couldn't load oculus go controller model");
-        }
-
-        auto& gc = ControllerModelOculusGo->Models[0].surfaces[0].surfaceDef.graphicsCommand;
-        gc.UniformData[0].Data = &gc.Textures[0];
-        gc.UniformData[1].Data = &SpecularLightDirection;
-        gc.UniformData[2].Data = &SpecularLightColor;
-        gc.UniformData[3].Data = &AmbientLightColor;
-        gc.UniformData[4].Data = &gc.Textures[1];
-        gc.UniformData[5].Data = &HighLightMask;
-        gc.UniformData[6].Data = &HighLightColor;
-
-        gc.GpuState.blendEnable = ovrGpuState::BLEND_ENABLE;
-        gc.GpuState.blendSrc = GL_SRC_ALPHA;
-        gc.GpuState.blendDst = GL_ONE_MINUS_SRC_ALPHA;
-    }
-
-    {
-        ModelGlPrograms programs;
-        const char* controllerModelFile = "apk:///assets/oculusgo_controller_prelit.ovrscene";
-        programs.ProgSingleTexture = &ProgSingleTexture;
-        programs.ProgBaseColorPBR = &ProgSingleTexture;
-        MaterialParms materials;
-        ControllerModelOculusGoPreLit =
-            LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
-
-        if (ControllerModelOculusGoPreLit == NULL ||
-            static_cast<int>(ControllerModelOculusGoPreLit->Models.size()) < 1) {
-            ALOGE_FAIL("Couldn't load prelit oculus go controller model");
-        }
-
-        auto& gc = ControllerModelOculusGoPreLit->Models[0].surfaces[0].surfaceDef.graphicsCommand;
-        gc.GpuState.blendEnable = ovrGpuState::BLEND_ENABLE;
-        gc.GpuState.blendSrc = GL_SRC_ALPHA;
-        gc.GpuState.blendDst = GL_ONE_MINUS_SRC_ALPHA;
-    }
 
     {
         ModelGlPrograms programs;
@@ -809,9 +538,6 @@ void ovrVrInput::AppShutdown(const OVRFW::ovrAppContext* context) {
 
     ResetLaserPointer();
 
-    OVRFW::GlProgram::Free(ProgSingleTexture);
-    OVRFW::GlProgram::Free(ProgLitSpecularWithHighlight);
-    OVRFW::GlProgram::Free(ProgLitSpecular);
     OVRFW::GlProgram::Free(ProgOculusTouch);
 
     SurfaceRender.Shutdown();
@@ -824,91 +550,6 @@ bool ovrVrInput::OnKeyEvent(const int keyCode, const int action) {
         return true;
     }
     return false;
-}
-
-static void RenderBones(
-    const ovrApplFrameIn& frame,
-    ovrParticleSystem* ps,
-    ovrTextureAtlas& particleAtlas,
-    const uint16_t particleAtlasIndex,
-    ovrBeamRenderer* br,
-    ovrTextureAtlas& beamAtlas,
-    const uint16_t beamAtlasIndex,
-    const Posef& worldPose,
-    const std::vector<ovrJoint>& joints,
-    jointHandles_t& handles) {
-    for (int i = 0; i < static_cast<int>(joints.size()); ++i) {
-        const ovrJoint& joint = joints[i];
-        const Posef jw = worldPose * joint.Pose;
-
-        if (!handles[i].first.IsValid()) {
-            handles[i].first = ps->AddParticle(
-                frame,
-                jw.Translation,
-                0.0f,
-                Vector3f(0.0f),
-                Vector3f(0.0f),
-                joint.Color,
-                ovrEaseFunc::NONE,
-                0.0f,
-                0.08f,
-                FLT_MAX,
-                particleAtlasIndex);
-        } else {
-            ps->UpdateParticle(
-                frame,
-                handles[i].first,
-                jw.Translation,
-                0.0f,
-                Vector3f(0.0f),
-                Vector3f(0.0f),
-                joint.Color,
-                ovrEaseFunc::NONE,
-                0.0f,
-                0.08f,
-                FLT_MAX,
-                particleAtlasIndex);
-        }
-
-        if (i > 0) {
-            const ovrJoint& parentJoint = joints[joint.ParentIndex];
-            const Posef pw = worldPose * parentJoint.Pose;
-            if (!handles[i].second.IsValid()) {
-                handles[i].second = br->AddBeam(
-                    frame,
-                    beamAtlas,
-                    beamAtlasIndex,
-                    0.064f,
-                    pw.Translation,
-                    jw.Translation,
-                    Vector4f(0.0f, 0.0f, 1.0f, 1.0f),
-                    ovrBeamRenderer::LIFETIME_INFINITE);
-            } else {
-                br->UpdateBeam(
-                    frame,
-                    handles[i].second,
-                    beamAtlas,
-                    beamAtlasIndex,
-                    0.064f,
-                    pw.Translation,
-                    jw.Translation,
-                    Vector4f(0.0f, 0.0f, 1.0f, 1.0f));
-            }
-        }
-    }
-}
-
-static void ResetBones(ovrParticleSystem* ps, ovrBeamRenderer* br, jointHandles_t& handles) {
-    for (int i = 0; i < static_cast<int>(handles.size()); ++i) {
-        if (handles[i].first.IsValid()) {
-            ps->RemoveParticle(handles[i].first);
-            handles[i].first.Release();
-        }
-        if (handles[i].second.IsValid()) {
-            br->RemoveBeam(handles[i].second);
-            handles[i].second.Release();
-        }
-    }
 }
 
 static void TrackpadStats(
@@ -965,7 +606,6 @@ void ovrVrInput::RenderRunningFrame(
     const ovrJava* java = reinterpret_cast<const ovrJava*>(GetContext()->ContextForVrApi());
 
     EnumerateInputDevices();
-    bool recenteredController = false;
     bool hasActiveController = false;
     int iActiveInputDeviceID;
     vrapi_GetPropertyInt(java, VRAPI_ACTIVE_INPUT_DEVICE_ID, &iActiveInputDeviceID);
@@ -1006,15 +646,8 @@ void ovrVrInput::RenderRunningFrame(
                 float roll;
                 Quatf r(remoteTracking.HeadPose.Pose.Orientation);
                 r.GetEulerAngles<Axis_Y, Axis_X, Axis_Z>(&yaw, &pitch, &roll);
-                // ALOG( "MLBUPose", "Pose.r = ( %.2f, %.2f, %.2f, %.2f ), ypr( %.2f, %.2f, %.2f ),
-                // t( %.2f, %.2f, %.2f )", 	r.x, r.y, r.z, r.w, 	MATH_FLOAT_RADTODEGREEFACTOR *
-                // yaw,
-                // MATH_FLOAT_RADTODEGREEFACTOR * pitch, MATH_FLOAT_RADTODEGREEFACTOR * roll,
-                //	remoteTracking.HeadPose.Pose.Position.x,
-                // remoteTracking.HeadPose.Pose.Position.y, remoteTracking.HeadPose.Pose.Position.z
-                //);
                 trDevice.IsActiveInputDevice = (trDevice.GetDeviceID() == ActiveInputDeviceID);
-                result = PopulateRemoteControllerInfo(trDevice, recenteredController);
+                result = PopulateRemoteControllerInfo(trDevice);
 
                 if (result == ovrSuccess) {
                     if (trDevice.IsActiveInputDevice) {
@@ -1022,8 +655,10 @@ void ovrVrInput::RenderRunningFrame(
                     }
                 }
             }
+        } else if (device->GetType() == ovrControllerType_StandardPointer) {
+            // ignoring Standard Pointer device type.
         } else {
-            ALOG("MLBUState - Unexpected Device Type %d on %d", device->GetType(), i);
+            ALOG("Unexpected Device Type %d on %d", device->GetType(), i);
         }
     }
 
@@ -1038,7 +673,6 @@ void ovrVrInput::RenderRunningFrame(
     // Force ignoring motion
     vrFrameWithoutMove.LeftRemoteTracked = false;
     vrFrameWithoutMove.RightRemoteTracked = false;
-    vrFrameWithoutMove.SingleHandRemoteTracked = false;
 
     // Player movement.
     Scene.SetFreeMove(true);
@@ -1070,51 +704,13 @@ void ovrVrInput::RenderRunningFrame(
             ovrInputDevice_TrackedRemote& trDevice =
                 *static_cast<ovrInputDevice_TrackedRemote*>(device);
 
-            ovrArmModel& armModel = trDevice.GetArmModel();
             const ovrTracking& tracking = trDevice.GetTracking();
-
-            std::vector<ovrJoint> worldJoints = armModel.GetSkeleton().GetJoints();
-
-            Posef remotePoseWithoutPosition(tracking.HeadPose.Pose);
-            remotePoseWithoutPosition.Translation = Vector3f(0.0f, 0.0f, 0.0f);
-
-            Posef headPoseWithoutPosition(in.Tracking.HeadPose.Pose);
-            headPoseWithoutPosition.Translation = Vector3f(0.0f, 0.0f, 0.0f);
-
-            Posef remotePose;
-            armModel.Update(
-                headPoseWithoutPosition,
-                remotePoseWithoutPosition,
-                trDevice.GetHand(),
-                recenteredController,
-                remotePose);
-
-            if ((trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
-                 ovrControllerCaps_HasPositionTracking) == 0) {
-                Posef neckPose(Quatf(), Vector3f(0.0f, in.EyeHeight, 0.0f));
-                RenderBones(
-                    in,
-                    ParticleSystem,
-                    *SpriteAtlas,
-                    0,
-                    RemoteBeamRenderer,
-                    *BeamAtlas,
-                    0,
-                    neckPose,
-                    armModel.GetTransformedJoints(),
-                    trDevice.GetJointHandles());
-            }
 
             Matrix4f mat = Matrix4f(tracking.HeadPose.Pose);
 
             std::vector<ovrDrawSurface>& controllerSurfaces = trDevice.GetControllerSurfaces();
-            float controllerYaw = 0.0f;
-            if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
-                ovrControllerCaps_ModelOculusGo) {
-                controllerYaw = OVR::DegreeToRad(180.0f);
-            }
             for (uint32_t k = 0; k < controllerSurfaces.size(); k++) {
-                controllerSurfaces[k].modelMatrix = mat * Matrix4f::RotationY(controllerYaw);
+                controllerSurfaces[k].modelMatrix = mat;
             }
 
             trDevice.UpdateHaptics(GetSessionObject(), in);
@@ -1159,7 +755,7 @@ void ovrVrInput::RenderRunningFrame(
                 pointerEnd,
                 LASER_COLOR,
                 ovrBeamRenderer::LIFETIME_INFINITE);
-            ALOG("MLBULaser - AddBeam %i", LaserPointerBeamHandle.Get());
+            ALOG("AddBeam %i", LaserPointerBeamHandle.Get());
 
             // Hide the gaze cursor when the remote laser pointer is active.
             GuiSys->GetGazeCursor().HideCursor();
@@ -1189,7 +785,7 @@ void ovrVrInput::RenderRunningFrame(
                     0.1f,
                     0.1f,
                     0);
-                ALOG("MLBULaser - AddParticle %i", LaserPointerParticleHandle.Get());
+                ALOG("AddParticle %i", LaserPointerParticleHandle.Get());
             }
         } else {
             if (LaserHit) {
@@ -1391,9 +987,7 @@ void ovrVrInput::ClearAndHideMenuItems() {
     SetObjectVisible(*GuiSys, Menu, "tertiary_input_header", false);
 }
 
-ovrResult ovrVrInput::PopulateRemoteControllerInfo(
-    ovrInputDevice_TrackedRemote& trDevice,
-    bool recenteredController) {
+ovrResult ovrVrInput::PopulateRemoteControllerInfo(ovrInputDevice_TrackedRemote& trDevice) {
     ovrDeviceID deviceID = trDevice.GetDeviceID();
 
     const ovrArmModel::ovrHandedness controllerHand = trDevice.GetHand();
@@ -1411,7 +1005,7 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(
     result = vrapi_GetCurrentInputState(GetSessionObject(), deviceID, &remoteInputState.Header);
 
     if (result != ovrSuccess) {
-        ALOG("MLBUState - ERROR %i getting remote input state!", result);
+        ALOG("ERROR %i getting remote input state!", result);
         OnDeviceDisconnected(deviceID);
         return result;
     }
@@ -1497,14 +1091,10 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(
         reinterpret_cast<const ovrInputTrackedRemoteCapabilities*>(trDevice.GetCaps());
 
     if ((inputTrackedRemoteCapabilities->ControllerCapabilities &
-         ovrControllerCaps_ModelOculusGo) != 0) {
-        SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "Oculus Go Controller");
-    }
-        else if (
-        (inputTrackedRemoteCapabilities->ControllerCapabilities &
          ovrControllerCaps_ModelOculusTouch) != 0) {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "Oculus Touch Controller");
-    } else {
+    }
+        else {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "UNKNOWN CONTROLLER TYPE");
     }
 
@@ -1832,15 +1422,6 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(
         "Battery: %d",
         remoteInputState.BatteryPercentRemaining);
 
-    if (remoteInputState.RecenterCount != trDevice.GetLastRecenterCount()) {
-        recenteredController = true;
-        ALOG(
-            "MLBUState - **RECENTERED** (%i != %i )",
-            (int)remoteInputState.RecenterCount,
-            (int)trDevice.GetLastRecenterCount());
-        trDevice.SetLastRecenterCount(remoteInputState.RecenterCount);
-    }
-
     return result;
 }
 
@@ -1904,7 +1485,7 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
     ovrResult result = ovrError_NotInitialized;
     switch (capsHeader.Type) {
         case ovrControllerType_TrackedRemote: {
-            ALOG("MLBUConnect - Controller connected, ID = %u", capsHeader.DeviceID);
+            ALOG("Controller connected, ID = %u", capsHeader.DeviceID);
 
             ovrInputTrackedRemoteCapabilities remoteCapabilities;
             remoteCapabilities.Header = capsHeader;
@@ -1918,7 +1499,7 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
                 ovrInputDevice_TrackedRemote& trDevice =
                     *static_cast<ovrInputDevice_TrackedRemote*>(device);
                 std::vector<ovrDrawSurface>& controllerSurfaces = trDevice.GetControllerSurfaces();
-                ModelFile* modelFile = ControllerModelOculusGo;
+                ModelFile* modelFile = ControllerModelOculusTouchLeft;
                                     if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
                         ovrControllerCaps_ModelOculusTouch) {
                         if (trDevice.GetHand() == ovrArmModel::HAND_LEFT) {
@@ -1939,48 +1520,44 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
                 VRMenuObject* header = Menu->ObjectForName(*GuiSys, "primary_input_header");
                 if (header != nullptr) {
                     if ((remoteCapabilities.ControllerCapabilities &
-                         ovrControllerCaps_ModelOculusGo) != 0) {
-                        header->SetText("Oculus Go old Controller");
-                    }
-                                        else if (
-                        (remoteCapabilities.ControllerCapabilities &
                          ovrControllerCaps_ModelOculusTouch) != 0) {
                         header->SetText("Oculus Touch Controller");
                     }
-                }
+                                    }
+            }
+            break;
+        }
+        case ovrControllerType_StandardPointer: {
+            ovrInputStandardPointerCapabilities standardPointerCapabilities;
+            standardPointerCapabilities.Header = capsHeader;
+            result = vrapi_GetInputDeviceCapabilities(
+                GetSessionObject(), &standardPointerCapabilities.Header);
+            if (result == ovrSuccess) {
+                device = new ovrInputDevice_StandardPointer(standardPointerCapabilities);
             }
             break;
         }
 
         default:
-            ALOG("Unknown device connected");
+            ALOG("Unknown device connected of type %d", capsHeader.Type);
             return;
     }
 
     if (result != ovrSuccess) {
-        ALOG("MLBUConnect - vrapi_GetInputDeviceCapabilities: Error %i", result);
+        ALOG("vrapi_GetInputDeviceCapabilities: Error %i", result);
     }
     if (device != nullptr) {
-        ALOG("MLBUConnect - Added device '%s', id = %u", device->GetName(), capsHeader.DeviceID);
+        ALOG("Added device '%s', id = %u", device->GetName(), capsHeader.DeviceID);
         InputDevices.push_back(device);
     } else {
-        ALOG("MLBUConnect - Device creation failed for id = %u", capsHeader.DeviceID);
+        ALOG("Device creation failed for id = %u", capsHeader.DeviceID);
     }
 }
 
 //==============================
 // ovrVrInput::OnDeviceDisconnected
 void ovrVrInput::OnDeviceDisconnected(const ovrDeviceID deviceID) {
-    ALOG("MLBUConnect - Controller disconnected, ID = %i", deviceID);
-    int deviceIndex = FindInputDevice(deviceID);
-    if (deviceIndex >= 0) {
-        ovrInputDeviceBase* device = InputDevices[deviceIndex];
-        if (device != nullptr && device->GetType() == ovrControllerType_TrackedRemote) {
-            ovrInputDevice_TrackedRemote& trDevice =
-                *static_cast<ovrInputDevice_TrackedRemote*>(device);
-            ResetBones(ParticleSystem, RemoteBeamRenderer, trDevice.GetJointHandles());
-        }
-    }
+    ALOG("Controller disconnected, ID = %i", deviceID);
     RemoveDevice(deviceID);
 }
 
@@ -2000,15 +1577,14 @@ ovrInputDeviceBase* ovrInputDevice_TrackedRemote::Create(
     OvrGuiSys& guiSys,
     VRMenu& menu,
     const ovrInputTrackedRemoteCapabilities& remoteCapabilities) {
-    ALOG("MLBUConnect - ovrInputDevice_TrackedRemote::Create");
+    ALOG("ovrInputDevice_TrackedRemote::Create");
 
     ovrInputStateTrackedRemote remoteInputState;
     remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
     ovrResult result = vrapi_GetCurrentInputState(
         app.GetSessionObject(), remoteCapabilities.Header.DeviceID, &remoteInputState.Header);
     if (result == ovrSuccess) {
-        ovrInputDevice_TrackedRemote* device =
-            new ovrInputDevice_TrackedRemote(remoteCapabilities, remoteInputState.RecenterCount);
+        ovrInputDevice_TrackedRemote* device = new ovrInputDevice_TrackedRemote(remoteCapabilities);
 
         ovrArmModel::ovrHandedness controllerHand = ovrArmModel::HAND_RIGHT;
         if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
@@ -2017,7 +1593,7 @@ ovrInputDeviceBase* ovrInputDevice_TrackedRemote::Create(
 
         char const* handStr = controllerHand == ovrArmModel::HAND_LEFT ? "left" : "right";
         ALOG(
-            "MLBUConnect - Controller caps: hand = %s, Button %x, Controller %x, MaxX %d, MaxY %d, SizeX %f SizeY %f",
+            "Controller caps: hand = %s, Button %x, Controller %x, MaxX %d, MaxY %d, SizeX %f SizeY %f",
             handStr,
             remoteCapabilities.ButtonCapabilities,
             remoteCapabilities.ControllerCapabilities,
@@ -2026,15 +1602,12 @@ ovrInputDeviceBase* ovrInputDevice_TrackedRemote::Create(
             remoteCapabilities.TrackpadSizeX,
             remoteCapabilities.TrackpadSizeY);
 
-        device->ArmModel.InitSkeleton(controllerHand == ovrArmModel::HAND_LEFT);
-        device->JointHandles.resize(device->ArmModel.GetSkeleton().GetJoints().size());
-
         device->HapticState = 0;
         device->HapticsSimpleValue = 0.0f;
 
         return device;
     } else {
-        ALOG("MLBUConnect - vrapi_GetCurrentInputState: Error %i", result);
+        ALOG("vrapi_GetCurrentInputState: Error %i", result);
     }
 
     return nullptr;

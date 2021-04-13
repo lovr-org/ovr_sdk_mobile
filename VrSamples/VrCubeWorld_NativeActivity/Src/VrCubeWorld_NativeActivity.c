@@ -1652,7 +1652,6 @@ typedef struct {
     int GpuLevel;
     int MainThreadTid;
     int RenderThreadTid;
-    bool BackButtonDownLastFrame;
 #if MULTI_THREADED
     ovrRenderThread RenderThread;
 #else
@@ -1675,7 +1674,6 @@ static void ovrApp_Clear(ovrApp* app) {
     app->GpuLevel = 2;
     app->MainThreadTid = 0;
     app->RenderThreadTid = 0;
-    app->BackButtonDownLastFrame = false;
     app->UseMultiview = true;
 
     ovrEgl_Clear(&app->Egl);
@@ -1748,37 +1746,7 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
     }
 }
 
-static void ovrApp_HandleInput(ovrApp* app) {
-    bool backButtonDownThisFrame = false;
-
-    for (int i = 0;; i++) {
-        ovrInputCapabilityHeader cap;
-        ovrResult result = vrapi_EnumerateInputDevices(app->Ovr, i, &cap);
-        if (result < 0) {
-            break;
-        }
-
-        if (cap.Type == ovrControllerType_TrackedRemote) {
-            ovrInputStateTrackedRemote trackedRemoteState;
-            trackedRemoteState.Header.ControllerType = ovrControllerType_TrackedRemote;
-            result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &trackedRemoteState.Header);
-            if (result == ovrSuccess) {
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Back;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_B;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Y;
-            }
-        }
-    }
-
-    bool backButtonDownLastFrame = app->BackButtonDownLastFrame;
-    app->BackButtonDownLastFrame = backButtonDownThisFrame;
-
-    if (backButtonDownLastFrame && !backButtonDownThisFrame) {
-        ALOGV("back button short press");
-        ALOGV("        vrapi_ShowSystemUI( confirmQuit )");
-        vrapi_ShowSystemUI(&app->Java, VRAPI_SYS_UI_CONFIRM_QUIT_MENU);
-    }
-}
+static void ovrApp_HandleInput(ovrApp* app) {}
 
 static void ovrApp_HandleVrApiEvents(ovrApp* app) {
     ovrEventDataBuffer eventDataBuffer = {};

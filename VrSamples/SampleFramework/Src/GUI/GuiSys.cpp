@@ -21,11 +21,11 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 
 #include "Appl.h"
 
+#include "VRMenu.h"
 #include "VRMenuMgr.h"
 #include "VRMenuComponent.h"
 #include "SoundLimiter.h"
 #include "VRMenuEventHandler.h"
-#include "FolderBrowser.h"
 #include "DefaultComponent.h"
 
 #include "JniUtils.h"

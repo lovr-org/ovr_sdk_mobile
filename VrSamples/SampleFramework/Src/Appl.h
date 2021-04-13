@@ -65,9 +65,6 @@ struct ovrApplFrameIn {
     ovrTracking2 Tracking;
     ovrInputStateTrackedRemote LeftRemote;
     ovrInputStateTrackedRemote RightRemote;
-    ovrInputStateTrackedRemote SingleHandRemote;
-    uint16_t SingleHandRemoteTrackpadMaxX = 0u;
-    uint16_t SingleHandRemoteTrackpadMaxY = 0u;
     uint32_t AllButtons = 0u;
     uint32_t AllTouches = 0u;
     uint32_t LastFrameAllButtons = 0u;
@@ -77,7 +74,6 @@ struct ovrApplFrameIn {
     int32_t RecenterCount = 0;
     bool LeftRemoteTracked = false;
     bool RightRemoteTracked = false;
-    bool SingleHandRemoteTracked = false;
     bool HeadsetIsMounted = true;
     bool LastFrameHeadsetIsMounted = true;
     std::vector<ovrKeyEvent> KeyEvents;
@@ -145,14 +141,12 @@ class ovrAppl {
         const int32_t renderThreadTid,
         const int cpuLevel,
         const int gpuLevel,
-        bool useMultiView = true,
-        bool overrideBackButtons = false)
+        bool useMultiView = true)
         : CpuLevel(cpuLevel),
           GpuLevel(gpuLevel),
           MainThreadTid(mainThreadTid),
           RenderThreadTid(renderThreadTid),
           UseMultiView(useMultiView),
-          OverrideBackButtons(overrideBackButtons),
           NumFramebuffers(useMultiView ? 1 : VRAPI_FRAME_LAYER_EYE_MAX) {}
 
     // Called from the OS callback when the app pauses or resumes
@@ -209,6 +203,10 @@ class ovrAppl {
         return SessionObject;
     }
 
+    void SetRunWhilePaused(bool b) {
+        RunWhilePaused = b;
+    }
+
    protected:
     //============================
     // protected interface
@@ -263,8 +261,6 @@ class ovrAppl {
     virtual void AppRenderEye(const ovrApplFrameIn& in, ovrRendererOutput& out, int eye);
     // Called once per eye each frame for default renderer
     virtual void AppEyeGLStateSetup(const ovrApplFrameIn& in, const ovrFramebuffer* fb, int eye);
-    // Called when BACK, etc is pressed to signal app quitting
-    virtual void AppHandleInputShutdownRequest(ovrRendererOutput& out);
     // Called when app loses focus
     virtual void AppLostFocus();
     // Called when app re-gains focus
@@ -313,7 +309,6 @@ class ovrAppl {
     bool LastFrameHeadsetIsMounted = true;
 
     bool UseMultiView;
-    bool OverrideBackButtons;
     std::unique_ptr<ovrFramebuffer> Framebuffer[VRAPI_FRAME_LAYER_EYE_MAX];
     int NumFramebuffers;
 
@@ -321,6 +316,8 @@ class ovrAppl {
     std::vector<ovrKeyEvent> PendingKeyEvents;
     std::mutex TouchEventMutex;
     std::vector<ovrTouchEvent> PendingTouchEvents;
+    bool IsAppFocused = false;
+    bool RunWhilePaused = false;
 };
 
 } // namespace OVRFW

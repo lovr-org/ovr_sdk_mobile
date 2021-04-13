@@ -1065,20 +1065,6 @@ void OvrSceneView::Frame(
     // Controller sticks
     Vector2f LeftStick(0.0f, 0.0f);
     Vector2f RightStick(0.0f, 0.0f);
-    Vector2f SingleHandStick(0.0f, 0.0f);
-
-    if (vrFrame.SingleHandRemoteTracked && ((vrFrame.AllTouches & ovrTouch_TrackPad) != 0)) {
-        /// normalize to 0..1 range
-        Vector2f trackpadNormalized;
-        trackpadNormalized.x = vrFrame.SingleHandRemote.TrackpadPosition.x /
-            (float)vrFrame.SingleHandRemoteTrackpadMaxX;
-        trackpadNormalized.y = vrFrame.SingleHandRemote.TrackpadPosition.y /
-            (float)vrFrame.SingleHandRemoteTrackpadMaxY;
-
-        /// map to -1..1 range
-        SingleHandStick.x = (trackpadNormalized.x - 0.5f) * 2.0f;
-        SingleHandStick.y = (trackpadNormalized.y - 0.5f) * 2.0f;
-    }
 
     /// Flip Y on quest
     if (vrFrame.LeftRemoteTracked) {
@@ -1094,7 +1080,6 @@ void OvrSceneView::Frame(
     static constexpr float deadZoneRadius = 0.5f;
     ApplyDeadZone(LeftStick, deadZoneRadius);
     ApplyDeadZone(RightStick, deadZoneRadius);
-    ApplyDeadZone(SingleHandStick, deadZoneRadius);
 
     //
     // Player view angles
@@ -1110,7 +1095,7 @@ void OvrSceneView::Frame(
     } else if (StickYaw > 2.0f * MATH_FLOAT_PI) {
         StickYaw -= 2.0f * MATH_FLOAT_PI;
     }
-    YawVelocity = angleSpeed * (RightStick.x + SingleHandStick.x);
+    YawVelocity = angleSpeed * (RightStick.x);
 
     // Only if there is no head tracking, allow right stick up/down to adjust pitch,
     // which can be useful for debugging without having to dock the device.
@@ -1140,15 +1125,13 @@ void OvrSceneView::Frame(
     // Player movement
     //
 
-    float allSticksY = LeftStick.y + RightStick.y + SingleHandStick.y;
+    float allSticksY = LeftStick.y + RightStick.y;
     allSticksY = std::max(-1.0f, std::min(1.0f, allSticksY));
 
     // Allow up / down movement if there is no floor collision model or in 'free move' mode.
     const bool upDown = (WorldModel.Definition == NULL || FreeMove);
     Vector3f gamepadMove(
-        LeftStick.x,
-        upDown ? LeftStick.y : 0.0f,
-        upDown ? RightStick.y + SingleHandStick.y : allSticksY);
+        LeftStick.x, upDown ? LeftStick.y : 0.0f, upDown ? RightStick.y : allSticksY);
 
     // Perform player movement if there is input.
     if (gamepadMove.LengthSq() > 0.0f) {

@@ -28,7 +28,7 @@ class Vr360VideoPlayer : public OVRFW::ovrAppl {
         const int32_t renderThreadTid,
         const int cpuLevel,
         const int gpuLevel)
-        : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMutliView */),
+        : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMultiView */),
           FreeMove(false),
           SceneModel(nullptr),
           FileSys(nullptr),

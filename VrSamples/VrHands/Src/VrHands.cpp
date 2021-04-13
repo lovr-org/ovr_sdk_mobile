@@ -379,7 +379,7 @@ ovrVrHands::ovrVrHands(
     const int32_t renderThreadTid,
     const int cpuLevel,
     const int gpuLevel)
-    : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMutliView */),
+    : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMultiView */),
       RenderState(RENDER_STATE_LOADING),
       FileSys(nullptr),
       DebugLines(nullptr),

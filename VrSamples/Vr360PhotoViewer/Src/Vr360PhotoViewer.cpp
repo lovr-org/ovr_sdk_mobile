@@ -303,10 +303,6 @@ OVRFW::ovrApplFrameOut Vr360PhotoViewer::AppFrame(const OVRFW::ovrApplFrameIn& v
     /// Set free move mode if the left trigger is on
     FreeMove = (vrFrame.AllButtons & ovrButton_Trigger) != 0;
     Scene.SetFreeMove(FreeMove);
-
-    // Player movement
-    Scene.Frame(vrFrame);
-
     return OVRFW::ovrApplFrameOut();
 }
 
@@ -318,6 +314,8 @@ void Vr360PhotoViewer::AppRenderFrame(
             DefaultRenderFrame_Loading(in, out);
         } break;
         case RENDER_STATE_RUNNING: {
+            // Player movement
+            Scene.Frame(in);
             Scene.GetFrameMatrices(
                 SuggestedEyeFovDegreesX, SuggestedEyeFovDegreesY, out.FrameMatrices);
             Scene.GenerateFrameSurfaceList(out.FrameMatrices, out.Surfaces);
