@@ -11,8 +11,10 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:3.5.3'
+    classpath 'com.android.tools.build:gradle:4.0.0'
   }
+
+  tasks.register("wrapper")
 }
 
 class VrAppPlugin implements Plugin<Project> {
@@ -97,7 +99,6 @@ class VrAppPlugin implements Plugin<Project> {
 
     project.android {
       compileSdkVersion 26
-      buildToolsVersion '28.0.3'
 
       defaultConfig {
         minSdkVersion 24

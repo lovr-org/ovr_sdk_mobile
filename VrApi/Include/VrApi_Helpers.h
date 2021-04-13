@@ -601,112 +601,9 @@ static inline ovrPerformanceParms vrapi_DefaultPerformanceParms() {
 }
 
 
-typedef enum {
-    VRAPI_FRAME_INIT_DEFAULT = 0,
-    VRAPI_FRAME_INIT_BLACK = 1,
-    VRAPI_FRAME_INIT_BLACK_FLUSH = 2,
-    VRAPI_FRAME_INIT_BLACK_FINAL = 3,
-    VRAPI_FRAME_INIT_LOADING_ICON = 4,
-    VRAPI_FRAME_INIT_LOADING_ICON_FLUSH = 5,
-
-    // enum 6 used to be VRAPI_FRAME_INIT_MESSAGE
-
-    // enum 7 used to be VRAPI_FRAME_INIT_MESSAGE_FLUSH
-} ovrFrameInit;
-
-/// Utility function to default initialize the ovrFrameParms.
-static inline ovrFrameParms vrapi_DefaultFrameParms(
-    const ovrJava* java,
-    const ovrFrameInit init,
-    const double currentTime,
-    ovrTextureSwapChain* textureSwapChain) {
-    const ovrMatrix4f projectionMatrix =
-        ovrMatrix4f_CreateProjectionFov(90.0f, 90.0f, 0.0f, 0.0f, 0.1f, 0.0f);
-    const ovrMatrix4f texCoordsFromTanAngles =
-        ovrMatrix4f_TanAngleMatrixFromProjection(&projectionMatrix);
-
-    ovrFrameParms parms;
-    memset(&parms, 0, sizeof(parms));
-
-    parms.Type = VRAPI_STRUCTURE_TYPE_FRAME_PARMS;
-    for (int layer = 0; layer < VRAPI_FRAME_LAYER_TYPE_MAX; layer++) {
-        parms.Layers[layer].ColorScale = 1.0f;
-        for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-            parms.Layers[layer].Textures[eye].TexCoordsFromTanAngles = texCoordsFromTanAngles;
-            parms.Layers[layer].Textures[eye].TextureRect.width = 1.0f;
-            parms.Layers[layer].Textures[eye].TextureRect.height = 1.0f;
-            parms.Layers[layer].Textures[eye].HeadPose.Pose.Orientation.w = 1.0f;
-            parms.Layers[layer].Textures[eye].HeadPose.TimeInSeconds = currentTime;
-        }
-    }
-    parms.LayerCount = 1;
-    parms.SwapInterval = 1;
-    parms.ExtraLatencyMode = VRAPI_EXTRA_LATENCY_MODE_OFF;
-    parms.Reserved.M[0][0] = 1.0f;
-    parms.Reserved.M[1][1] = 1.0f;
-    parms.Reserved.M[2][2] = 1.0f;
-    parms.Reserved.M[3][3] = 1.0f;
-    parms.PerformanceParms = vrapi_DefaultPerformanceParms();
-    parms.Java = *java;
-
-    parms.Layers[0].SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
-    parms.Layers[0].DstBlend = VRAPI_FRAME_LAYER_BLEND_ZERO;
-    parms.Layers[0].Flags = 0;
-    parms.Layers[0].SpinSpeed = 0.0f;
-    parms.Layers[0].SpinScale = 1.0f;
-
-    parms.Layers[1].SrcBlend = VRAPI_FRAME_LAYER_BLEND_SRC_ALPHA;
-    parms.Layers[1].DstBlend = VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA;
-    parms.Layers[1].Flags = 0;
-    parms.Layers[1].SpinSpeed = 0.0f;
-    parms.Layers[1].SpinScale = 1.0f;
-
-    switch (init) {
-        case VRAPI_FRAME_INIT_DEFAULT: {
-            break;
-        }
-        case VRAPI_FRAME_INIT_BLACK:
-        case VRAPI_FRAME_INIT_BLACK_FLUSH:
-        case VRAPI_FRAME_INIT_BLACK_FINAL: {
-            parms.Layers[0].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            // NOTE: When requesting a solid black frame, set ColorScale to 0.0f
-            parms.Layers[0].ColorScale = 0.0f;
-            for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-                parms.Layers[0].Textures[eye].ColorTextureSwapChain =
-                    (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN;
-            }
-            break;
-        }
-        case VRAPI_FRAME_INIT_LOADING_ICON:
-        case VRAPI_FRAME_INIT_LOADING_ICON_FLUSH: {
-            parms.LayerCount = 2;
-            parms.Layers[0].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            parms.Layers[1].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            // NOTE: When requesting a solid black frame, set ColorScale to 0.0f
-            parms.Layers[0].ColorScale = 0.0f;
-            parms.Layers[1].Flags |= VRAPI_FRAME_LAYER_FLAG_SPIN;
-            parms.Layers[1].SpinSpeed = 1.0f; // rotation in radians per second
-            parms.Layers[1].SpinScale = 16.0f; // icon size factor smaller than fullscreen
-            for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-                parms.Layers[0].Textures[eye].ColorTextureSwapChain =
-                    (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN;
-                parms.Layers[1].Textures[eye].ColorTextureSwapChain = (textureSwapChain != NULL)
-                    ? textureSwapChain
-                    : (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN_LOADING_ICON;
-            }
-            break;
-        }
-    }
-
-    if (init == VRAPI_FRAME_INIT_BLACK_FLUSH || init == VRAPI_FRAME_INIT_LOADING_ICON_FLUSH) {
-        parms.Flags |= VRAPI_FRAME_FLAG_FLUSH;
-    }
-    if (init == VRAPI_FRAME_INIT_BLACK_FINAL) {
-        parms.Flags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
-    }
-
-    return parms;
-}
+//-----------------------------------------------------------------
+// Layer Types - default initialization.
+//-----------------------------------------------------------------
 
 static inline ovrLayerProjection2 vrapi_DefaultLayerProjection2() {
     ovrLayerProjection2 layer = {};
@@ -786,6 +683,7 @@ static inline ovrLayerProjection2 vrapi_DefaultLayerSolidColorProjection2(
 
     return layer;
 }
+
 
 static inline ovrLayerCylinder2 vrapi_DefaultLayerCylinder2() {
     ovrLayerCylinder2 layer = {};
@@ -965,6 +863,7 @@ static inline ovrLayerFishEye2 vrapi_DefaultLayerFishEye2() {
 
     return layer;
 }
+
 
 
 

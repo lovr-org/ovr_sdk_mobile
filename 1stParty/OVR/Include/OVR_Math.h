@@ -56,7 +56,9 @@ inline T clamp(T v, T lo, T hi) {
 // Independent OVR_MATH_ASSERT implementation for OVR_Math.h.
 
 #if !defined(OVR_MATH_ASSERT)
-#if defined(_DEBUG)
+#if defined(OVR_GTEST)
+#define OVR_MATH_ASSERT(p) EXPECT_TRUE((p));
+#elif defined(_DEBUG)
 #define OVR_MATH_ASSERT(p)    \
     if (!(p)) {               \
         OVR_MATH_DEBUG_BREAK; \

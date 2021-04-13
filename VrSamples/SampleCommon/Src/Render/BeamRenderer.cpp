@@ -345,7 +345,6 @@ void ovrBeamRenderer::FrameInternal(
         const ovrBeamInfo& cur = BeamInfos[beamHandle.Get()];
         double const timeAlive = frame.PredictedDisplayTime - cur.StartTime;
         if (timeAlive > cur.LifeTime) {
-            ALOG("Free beamIndex %i", (int)beamHandle.Get());
             BeamInfos[beamHandle.Get()].Handle = handle_t();
             FreeBeams.push_back(beamHandle);
             ActiveBeams[i] = ActiveBeams.back();

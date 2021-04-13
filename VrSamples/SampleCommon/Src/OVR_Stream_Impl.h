@@ -215,6 +215,7 @@ class ovrStream_File : public ovrStream {
         OVR_OVERRIDE;
     virtual bool Open_Internal(char const* uri, ovrStreamMode const mode) OVR_OVERRIDE;
     virtual void Close_Internal() OVR_OVERRIDE;
+    virtual void Flush_Internal() OVR_OVERRIDE;
     virtual bool Read_Internal(
         std::vector<uint8_t>& outBuffer,
         size_t const bytesToRead,
@@ -246,6 +247,7 @@ class ovrStream_Apk : public ovrStream {
         OVR_OVERRIDE;
     virtual bool Open_Internal(char const* uri, ovrStreamMode const mode) OVR_OVERRIDE;
     virtual void Close_Internal() OVR_OVERRIDE;
+    virtual void Flush_Internal() OVR_OVERRIDE;
     virtual bool Read_Internal(
         std::vector<uint8_t>& outBuffer,
         size_t const bytesToRead,

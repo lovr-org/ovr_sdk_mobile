@@ -26,6 +26,7 @@ class ovrAxisRenderer {
     bool Init(size_t count = 64);
     void Shutdown();
     void Update(const std::vector<OVR::Posef>& points);
+    void Update(const OVR::Posef* points, size_t count);
     void Render(
         const OVR::Matrix4f& worldMatrix,
         const OVRFW::ovrApplFrameIn& in,

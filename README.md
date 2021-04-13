@@ -8,11 +8,30 @@ You must still agree to Oculus' licensing terms to use it.
 
 # About
 
-The Oculus Mobile SDK includes libraries, tools, and resources for native C/C++ development of Android apps for the Oculus Quest and Oculus Go standalone devices. If you primarily use Unity or Unreal Engine for Android development, it is not necessary to download the Mobile SDK in most cases . For more information on Oculus Mobile development using Unity or Unreal Engine, see Mobile Development with Unity and Unreal.
+The Oculus Mobile SDK includes libraries, tools, and resources for native C/C++ development of Android apps for the Oculus Quest and Oculus Go standalone devices. If you primarily use Unity or Unreal Engine for Android development, it is not necessary to download the Mobile SDK in most cases . For more information on Oculus Mobile development using Unity or Unreal Engine, see [Mobile Development with Unity and Unreal](https://developer.oculus.com/documentation/native/android/mobile-game-engine/).
 
-For documentation on developing for Oculus devices that use Android, see our Mobile SDK Developer Guide.
+For documentation on developing for Oculus devices that use Android, see our [Mobile SDK Developer Guide](https://developer.oculus.com/documentation/native/android/).
+
+For details on migrating to Mobile SDK 25.0 (API 1.42) from previous versions, see the [Mobile SDK Migration Guide](https://developer.oculus.com/documentation/native/android/mobile-native-migration/).
 
 # Version history
+
+## Oculus Mobile SDK 25.0 (API 1.42.0) (2021-02-19)
+
+### API Changes
+
+* Added a new entry point, vrapi_CreateAndroidSurfaceSwapchain3, for creating an Android surface backed swapchain by passing platform specific create flags defined in ovrAndroidSurfaceSwapChainFlags.
+* The vrapi_SubmitFrame and associated structures have been marked deprecated and should no longer be used. The vrapi_SubmitFrame2 path should be used instead.
+* The ovrModeFlag, VRAPI_MODE_FLAG_FRONT_BUFFER_PROTECTED, has been removed since protected mode is indicated at the swapchain level via ovrAndroidSurfaceSwapChainFlags flag VRAPI_ANDROID_SURFACE_SWAP_CHAIN_FLAG_PROTECTED.
+* The ovrSystemStatus, VRAPI_SYS_STATUS_FRONT_BUFFER_PROTECTED, has been removed.
+
+### Bug Fixes
+
+* There are no major bug fixes with this release.
+
+### Known SDK Issues
+
+* When building samples, there is an issue when using the latest NDK release. Instead, use NDK 21 until the issue is resolved. 
 
 ## Oculus Mobile SDK 23.0 (API 1.40.0) (2020-12-19)
 

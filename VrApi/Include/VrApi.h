@@ -782,11 +782,15 @@ OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateTextureSwapChain(
 /// size, in which case the default values provided here will not be used (ie both video
 /// decompression or camera preview override the size automatically).
 ///
-/// If isProtected is true, the surface swapchain will be created as a protected surface, ie for
+/// If isProtected is true, or VRAPI_ANDROID_SURFACE_SWAP_CHAIN_FLAG_PROTECTED is specified via the
+/// flags option, the surface swapchain will be created as a protected surface, ie for
 /// supporting secure video playback.
 OVR_VRAPI_EXPORT ovrTextureSwapChain* vrapi_CreateAndroidSurfaceSwapChain(int width, int height);
 OVR_VRAPI_EXPORT ovrTextureSwapChain*
 vrapi_CreateAndroidSurfaceSwapChain2(int width, int height, bool isProtected);
+/// 'flags' is specified as a combination of ovrAndroidSurfaceSwapChainFlags flags.
+OVR_VRAPI_EXPORT ovrTextureSwapChain*
+vrapi_CreateAndroidSurfaceSwapChain3(int width, int height, uint64_t flags);
 
 
 /// Destroy the given texture swap chain.
@@ -815,7 +819,7 @@ OVR_VRAPI_EXPORT jobject vrapi_GetTextureSwapChainAndroidSurface(ovrTextureSwapC
 /// Accepts new eye images plus poses that will be used for future warps.
 /// The parms are copied, and are not referenced after the function returns.
 ///
-/// This will block until the textures from the previous vrapi_SubmitFrame() have been
+/// This will block until the textures from the previous vrapi_SubmitFrame*() have been
 /// consumed by the background thread, to allow one frame of overlap for maximum
 /// GPU utilization, while preventing multiple frames from piling up variable latency.
 ///
@@ -834,7 +838,10 @@ OVR_VRAPI_EXPORT jobject vrapi_GetTextureSwapChainAndroidSurface(ovrTextureSwapC
 /// be called from a thread with an OpenGL ES context whose completion ensures that
 /// frame rendering is complete. Generally this is the thread and context that was used
 /// for the rendering.
-OVR_VRAPI_EXPORT void vrapi_SubmitFrame(ovrMobile* ovr, const ovrFrameParms* parms);
+
+/// \deprecated The vrapi_SubmitFrame2 path with flexible layer types should be used instead.
+OVR_VRAPI_DEPRECATED(
+    OVR_VRAPI_EXPORT void vrapi_SubmitFrame(ovrMobile* ovr, const ovrFrameParms* parms));
 
 /// vrapi_SubmitFrame2 takes a frameDescription describing per-frame information such as:
 /// a flexible list of layers which should be drawn this frame and a frame index.
