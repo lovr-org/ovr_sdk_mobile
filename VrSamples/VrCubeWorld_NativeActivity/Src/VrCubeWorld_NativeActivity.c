@@ -19,7 +19,6 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include <pthread.h>
 #include <sys/prctl.h> // for prctl( PR_SET_NAME )
 #include <android/log.h>
-#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
 #include <android/native_window_jni.h> // for native window JNI
 #include <android_native_app_glue.h>
 
@@ -123,6 +122,10 @@ OpenGL-ES Utility Functions
 
 ================================================================================
 */
+
+#ifndef GL_FRAMEBUFFER_SRGB_EXT
+#define GL_FRAMEBUFFER_SRGB_EXT 0x8DB9
+#endif
 
 typedef struct {
     bool multi_view; // GL_OVR_multiview, GL_OVR_multiview2
@@ -1228,7 +1231,7 @@ ovrRenderer_Create(ovrRenderer* renderer, const ovrJava* java, const bool useMul
         ovrFramebuffer_Create(
             &renderer->FrameBuffer[eye],
             useMultiview,
-            GL_RGBA8,
+            GL_SRGB8_ALPHA8,
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH),
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT),
             NUM_MULTI_SAMPLES);
@@ -1356,8 +1359,10 @@ static ovrLayerProjection2 ovrRenderer_RenderFrame(
         GL(glCullFace(GL_BACK));
         GL(glViewport(0, 0, frameBuffer->Width, frameBuffer->Height));
         GL(glScissor(0, 0, frameBuffer->Width, frameBuffer->Height));
-        GL(glClearColor(0.125f, 0.0f, 0.125f, 1.0f));
+        GL(glClearColor(0.016f, 0.0f, 0.016f, 1.0f));
+        GL(glEnable(GL_FRAMEBUFFER_SRGB_EXT));
         GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+        GL(glDisable(GL_FRAMEBUFFER_SRGB_EXT));
         GL(glBindVertexArray(scene->Cube.VertexArrayObject));
         GL(glDrawElementsInstanced(
             GL_TRIANGLES, scene->Cube.IndexCount, GL_UNSIGNED_SHORT, NULL, NUM_INSTANCES));
@@ -1424,6 +1429,8 @@ void* RenderThreadFunction(void* parm) {
 
     ovrEgl egl;
     ovrEgl_CreateContext(&egl, renderThread->ShareEgl);
+
+    GL(glDisable(GL_FRAMEBUFFER_SRGB_EXT));
 
     ovrRenderer renderer;
     ovrRenderer_Create(&renderer, &java, renderThread->UseMultiview);
@@ -1652,7 +1659,6 @@ typedef struct {
     int GpuLevel;
     int MainThreadTid;
     int RenderThreadTid;
-    bool BackButtonDownLastFrame;
 #if MULTI_THREADED
     ovrRenderThread RenderThread;
 #else
@@ -1675,7 +1681,6 @@ static void ovrApp_Clear(ovrApp* app) {
     app->GpuLevel = 2;
     app->MainThreadTid = 0;
     app->RenderThreadTid = 0;
-    app->BackButtonDownLastFrame = false;
     app->UseMultiview = true;
 
     ovrEgl_Clear(&app->Egl);
@@ -1695,6 +1700,7 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
             // No need to reset the FLAG_FULLSCREEN window flag when using a View
             parms.Flags &= ~VRAPI_MODE_FLAG_RESET_WINDOW_FULLSCREEN;
 
+            parms.Flags |= VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB;
             parms.Flags |= VRAPI_MODE_FLAG_NATIVE_WINDOW;
             parms.Display = (size_t)app->Egl.Display;
             parms.WindowSurface = (size_t)app->NativeWindow;
@@ -1748,37 +1754,7 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
     }
 }
 
-static void ovrApp_HandleInput(ovrApp* app) {
-    bool backButtonDownThisFrame = false;
-
-    for (int i = 0;; i++) {
-        ovrInputCapabilityHeader cap;
-        ovrResult result = vrapi_EnumerateInputDevices(app->Ovr, i, &cap);
-        if (result < 0) {
-            break;
-        }
-
-        if (cap.Type == ovrControllerType_TrackedRemote) {
-            ovrInputStateTrackedRemote trackedRemoteState;
-            trackedRemoteState.Header.ControllerType = ovrControllerType_TrackedRemote;
-            result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &trackedRemoteState.Header);
-            if (result == ovrSuccess) {
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Back;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_B;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Y;
-            }
-        }
-    }
-
-    bool backButtonDownLastFrame = app->BackButtonDownLastFrame;
-    app->BackButtonDownLastFrame = backButtonDownThisFrame;
-
-    if (backButtonDownLastFrame && !backButtonDownThisFrame) {
-        ALOGV("back button short press");
-        ALOGV("        vrapi_ShowSystemUI( confirmQuit )");
-        vrapi_ShowSystemUI(&app->Java, VRAPI_SYS_UI_CONFIRM_QUIT_MENU);
-    }
-}
+static void ovrApp_HandleInput(ovrApp* app) {}
 
 static void ovrApp_HandleVrApiEvents(ovrApp* app) {
     ovrEventDataBuffer eventDataBuffer = {};
@@ -1892,8 +1868,6 @@ void android_main(struct android_app* app) {
     ALOGV("android_app_entry()");
     ALOGV("    android_main()");
 
-    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
-
     ovrJava java;
     java.Vm = app->activity->vm;
     (*java.Vm)->AttachCurrentThread(java.Vm, &java.Env, NULL);
@@ -1916,6 +1890,8 @@ void android_main(struct android_app* app) {
     ovrEgl_CreateContext(&appState.Egl, NULL);
 
     EglInitExtensions();
+
+    GL(glDisable(GL_FRAMEBUFFER_SRGB_EXT));
 
     appState.UseMultiview &= glExtensions.multi_view;
 

@@ -14,16 +14,16 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 // Master version numbers
 #define VRAPI_PRODUCT_VERSION 1
 #define VRAPI_MAJOR_VERSION 1
-#define VRAPI_MINOR_VERSION 36
+#define VRAPI_MINOR_VERSION 42
 #define VRAPI_PATCH_VERSION 0
 
 // Internal build identifier
-#define VRAPI_BUILD_VERSION 228938362
+#define VRAPI_BUILD_VERSION 267850300
 
 // Internal build description
 #define VRAPI_BUILD_DESCRIPTION "Development"
 
 // Minimum version of the driver required for this API
-#define VRAPI_DRIVER_VERSION 228938362
+#define VRAPI_DRIVER_VERSION 267850300
 
 #endif // OVR_VrApi_Version_h

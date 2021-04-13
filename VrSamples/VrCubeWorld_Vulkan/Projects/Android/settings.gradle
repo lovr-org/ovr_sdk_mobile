@@ -1,4 +1,6 @@
+
 rootProject.projectDir = new File(settingsDir, '../../../..')
 rootProject.name = "VrCubeWorld_Vulkan"
 
-include ':', 'VrSamples:VrCubeWorld_Vulkan:Projects:Android'
+include ':', \
+    ':VrSamples:VrCubeWorld_Vulkan:Projects:Android'

@@ -19,7 +19,6 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include <pthread.h>
 #include <sys/prctl.h> // for prctl( PR_SET_NAME )
 #include <android/log.h>
-#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
 #include <android/native_window_jni.h> // for native window JNI
 #include <android_native_app_glue.h>
 
@@ -58,6 +57,10 @@ All texture levels must have a 0 alpha border to avoid edge smear.
 
 #ifndef GL_TEXTURE_BORDER_COLOR
 #define GL_TEXTURE_BORDER_COLOR 0x1004
+#endif
+
+#ifndef GL_FRAMEBUFFER_SRGB_EXT
+#define GL_FRAMEBUFFER_SRGB_EXT 0x8DB9
 #endif
 
 #if !defined(GL_EXT_multisampled_render_to_texture)
@@ -124,6 +127,7 @@ OpenGL-ES Utility Functions
 
 typedef struct {
     bool EXT_texture_border_clamp; // GL_EXT_texture_border_clamp, GL_OES_texture_border_clamp
+    bool EXT_sRGB_write_control;
 } OpenGLExtensions_t;
 
 OpenGLExtensions_t glExtensions;
@@ -134,6 +138,7 @@ static void EglInitExtensions() {
         glExtensions.EXT_texture_border_clamp =
             strstr(allExtensions, "GL_EXT_texture_border_clamp") ||
             strstr(allExtensions, "GL_OES_texture_border_clamp");
+        glExtensions.EXT_sRGB_write_control = strstr(allExtensions, "GL_EXT_sRGB_write_control");
     }
 }
 
@@ -967,10 +972,10 @@ static ovrTextureSwapChain* ovrTextureSwapChain_Create(
     ovrTextureSwapChain* chain = NULL;
     if (numberOfFaces <= 1) {
         chain = vrapi_CreateTextureSwapChain3(
-            VRAPI_TEXTURE_TYPE_2D, GL_RGBA8, width, height, numStorageLevels, 1);
+            VRAPI_TEXTURE_TYPE_2D, GL_SRGB8_ALPHA8, width, height, numStorageLevels, 1);
     } else {
         chain = vrapi_CreateTextureSwapChain3(
-            VRAPI_TEXTURE_TYPE_CUBE, GL_RGBA8, width, height, numStorageLevels, 1);
+            VRAPI_TEXTURE_TYPE_CUBE, GL_SRGB8_ALPHA8, width, height, numStorageLevels, 1);
     }
 
     GLuint id = vrapi_GetTextureSwapChainHandle(chain, 0);
@@ -1370,8 +1375,8 @@ static void ovrScene_Create(ovrScene* scene, bool permissionsGranted) {
     {
         const int width = 512;
         const int height = 256;
-        scene->EquirectSwapChain =
-            vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D, GL_RGBA8, width, height, 1, 1);
+        scene->EquirectSwapChain = vrapi_CreateTextureSwapChain3(
+            VRAPI_TEXTURE_TYPE_2D, GL_SRGB8_ALPHA8, width, height, 1, 1);
 
         uint32_t* texData = (uint32_t*)malloc(width * height * sizeof(uint32_t));
 
@@ -1393,7 +1398,12 @@ static void ovrScene_Create(ovrScene* scene, bool permissionsGranted) {
         scene->CylinderWidth = 512;
         scene->CylinderHeight = 128;
         scene->CylinderSwapChain = vrapi_CreateTextureSwapChain3(
-            VRAPI_TEXTURE_TYPE_2D, GL_RGBA8, scene->CylinderWidth, scene->CylinderHeight, 1, 1);
+            VRAPI_TEXTURE_TYPE_2D,
+            GL_SRGB8_ALPHA8,
+            scene->CylinderWidth,
+            scene->CylinderHeight,
+            1,
+            1);
 
         uint32_t* texData =
             (uint32_t*)malloc(scene->CylinderWidth * scene->CylinderHeight * sizeof(uint32_t));
@@ -1465,7 +1475,7 @@ static void ovrRenderer_Create(ovrRenderer* renderer, const ovrJava* java) {
     for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
         ovrFramebuffer_Create(
             &renderer->FrameBuffer[eye],
-            GL_RGBA8,
+            GL_SRGB8_ALPHA8,
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH),
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT),
             NUM_MULTI_SAMPLES);
@@ -1721,7 +1731,6 @@ typedef struct {
     int RenderThreadTid;
     ovrLayer_Union2 Layers[ovrMaxLayerCount];
     int LayerCount;
-    bool BackButtonDownLastFrame;
     bool TouchPadDownLastFrame;
     ovrRenderer Renderer;
 } ovrApp;
@@ -1742,7 +1751,6 @@ static void ovrApp_Clear(ovrApp* app) {
     app->GpuLevel = 2;
     app->MainThreadTid = 0;
     app->RenderThreadTid = 0;
-    app->BackButtonDownLastFrame = false;
     app->TouchPadDownLastFrame = false;
 
     ovrEgl_Clear(&app->Egl);
@@ -1755,10 +1763,8 @@ static void ovrApp_RenderLoadingIcon(ovrApp* app) {
     frameFlags |= VRAPI_FRAME_FLAG_FLUSH;
 
     ovrLayerProjection2 blackLayer = vrapi_DefaultLayerBlackProjection2();
-    blackLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
 
     ovrLayerLoadingIcon2 iconLayer = vrapi_DefaultLayerLoadingIcon2();
-    iconLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
 
     const ovrLayerHeader2* layers[] = {
         &blackLayer.Header,
@@ -1783,6 +1789,7 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
             // No need to reset the FLAG_FULLSCREEN window flag when using a View
             parms.Flags &= ~VRAPI_MODE_FLAG_RESET_WINDOW_FULLSCREEN;
 
+            parms.Flags |= VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB;
             parms.Flags |= VRAPI_MODE_FLAG_NATIVE_WINDOW;
             parms.Display = (size_t)app->Egl.Display;
             parms.WindowSurface = (size_t)app->NativeWindow;
@@ -1830,7 +1837,6 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
 }
 
 static void ovrApp_HandleInput(ovrApp* app) {
-    bool backButtonDownThisFrame = false;
     bool touchPadDownThisFrame = false;
 
     for (int i = 0;; i++) {
@@ -1845,9 +1851,6 @@ static void ovrApp_HandleInput(ovrApp* app) {
             trackedRemoteState.Header.ControllerType = ovrControllerType_TrackedRemote;
             result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &trackedRemoteState.Header);
             if (result == ovrSuccess) {
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Back;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_B;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Y;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Enter;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_A;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Trigger;
@@ -1856,19 +1859,11 @@ static void ovrApp_HandleInput(ovrApp* app) {
     }
 
     bool touchPadDownLastFrame = app->TouchPadDownLastFrame;
-    bool backButtonDownLastFrame = app->BackButtonDownLastFrame;
     app->TouchPadDownLastFrame = touchPadDownThisFrame;
-    app->BackButtonDownLastFrame = backButtonDownThisFrame;
 
     if (touchPadDownLastFrame && !touchPadDownThisFrame) {
         // Cycle through the background types
         app->Scene.BackGroundType = (app->Scene.BackGroundType + 1) % MAX_BACKGROUND_TYPES;
-    }
-
-    if (backButtonDownLastFrame && !backButtonDownThisFrame) {
-        ALOGV("back button short press");
-        ALOGV("        vrapi_ShowSystemUI( confirmQuit )");
-        vrapi_ShowSystemUI(&app->Java, VRAPI_SYS_UI_CONFIRM_QUIT_MENU);
     }
 }
 
@@ -1995,8 +1990,6 @@ void android_main(struct android_app* app) {
     ALOGV("android_app_entry()");
     ALOGV("    android_main()");
 
-    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
-
     ovrJava java;
     java.Vm = app->activity->vm;
     (*java.Vm)->AttachCurrentThread(java.Vm, &java.Env, NULL);
@@ -2019,6 +2012,15 @@ void android_main(struct android_app* app) {
     ovrEgl_CreateContext(&appState.Egl, NULL);
 
     EglInitExtensions();
+
+    if (glExtensions.EXT_sRGB_write_control) {
+        // This app was originally written with the presumption that
+        // its swapchains and compositor front buffer were RGB.
+        // In order to have the colors the same now that its compositing
+        // to an sRGB front buffer, we have to write to an sRGB swapchain
+        // but with the linear->sRGB conversion disabled on write.
+        GL(glDisable(GL_FRAMEBUFFER_SRGB_EXT));
+    }
 
     appState.CpuLevel = CPU_LEVEL;
     appState.GpuLevel = GPU_LEVEL;

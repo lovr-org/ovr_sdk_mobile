@@ -379,7 +379,7 @@ ovrVrHands::ovrVrHands(
     const int32_t renderThreadTid,
     const int cpuLevel,
     const int gpuLevel)
-    : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMutliView */),
+    : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMultiView */),
       RenderState(RENDER_STATE_LOADING),
       FileSys(nullptr),
       DebugLines(nullptr),
@@ -415,15 +415,15 @@ ovrVrHands::~ovrVrHands() {
 //==============================
 // ovrVrHands::AppInit
 bool ovrVrHands::AppInit(const OVRFW::ovrAppContext* context) {
-    const ovrJava* java = reinterpret_cast<const ovrJava*>(context->ContextForVrApi());
-
-    FileSys = ovrFileSys::Create(*java);
+    const ovrJava& jj = *(reinterpret_cast<const ovrJava*>(context->ContextForVrApi()));
+    const xrJava ctx = JavaContextConvert(jj);
+    FileSys = OVRFW::ovrFileSys::Create(ctx);
     if (nullptr == FileSys) {
         ALOGE("Couldn't create FileSys");
         return false;
     }
 
-    Locale = ovrLocale::Create(*java->Env, java->ActivityObject, "default");
+    Locale = ovrLocale::Create(*ctx.Env, ctx.ActivityObject, "default");
     if (nullptr == Locale) {
         ALOGE("Couldn't create Locale");
         return false;
@@ -442,7 +442,7 @@ bool ovrVrHands::AppInit(const OVRFW::ovrAppContext* context) {
         return false;
     }
 
-    GuiSys = OvrGuiSys::Create(context);
+    GuiSys = OvrGuiSys::Create(&ctx);
     if (nullptr == GuiSys) {
         ALOGE("Couldn't create GUI");
         return false;
@@ -673,7 +673,7 @@ bool ovrVrHands::AppInit(const OVRFW::ovrAppContext* context) {
     SpriteAtlas->BuildSpritesFromGrid(4, 2, 8);
 
     ParticleSystem = new ovrParticleSystem();
-    ParticleSystem->Init(2048, *SpriteAtlas, ovrParticleSystem::GetDefaultGpuState(), false);
+    ParticleSystem->Init(2048, SpriteAtlas, ovrParticleSystem::GetDefaultGpuState(), false);
 
     BeamAtlas = new ovrTextureAtlas();
     BeamAtlas->Init(GuiSys->GetFileSys(), "apk:///assets/beams.ktx");
@@ -1041,7 +1041,7 @@ void ovrVrHands::RenderRunningFrame(
 
     GuiSys->Frame(in, out.FrameMatrices.CenterView, traceMat);
     BeamRenderer->Frame(in, out.FrameMatrices.CenterView, *BeamAtlas);
-    ParticleSystem->Frame(in, *SpriteAtlas, out.FrameMatrices.CenterView);
+    ParticleSystem->Frame(in, SpriteAtlas, out.FrameMatrices.CenterView);
     GuiSys->AppendSurfaceList(out.FrameMatrices.CenterView, &out.Surfaces);
 
     // render bones first

@@ -58,14 +58,8 @@ class ovrInputDeviceBase {
 // ovrInputDevice_TrackedRemote
 class ovrInputDevice_TrackedRemote : public ovrInputDeviceBase {
    public:
-    ovrInputDevice_TrackedRemote(
-        const ovrInputTrackedRemoteCapabilities& caps,
-        const uint8_t lastRecenterCount)
-        : ovrInputDeviceBase(),
-          MinTrackpad(FLT_MAX),
-          MaxTrackpad(-FLT_MAX),
-          Caps(caps),
-          LastRecenterCount(lastRecenterCount) {
+    ovrInputDevice_TrackedRemote(const ovrInputTrackedRemoteCapabilities& caps)
+        : ovrInputDeviceBase(), MinTrackpad(FLT_MAX), MaxTrackpad(-FLT_MAX), Caps(caps) {
         IsActiveInputDevice = false;
     }
 
@@ -103,19 +97,6 @@ class ovrInputDevice_TrackedRemote : public ovrInputDeviceBase {
         Tracking = tracking;
     }
 
-    uint8_t GetLastRecenterCount() const {
-        return LastRecenterCount;
-    }
-    void SetLastRecenterCount(const uint8_t c) {
-        LastRecenterCount = c;
-    }
-
-    ovrArmModel& GetArmModel() {
-        return ArmModel;
-    }
-    jointHandles_t& GetJointHandles() {
-        return JointHandles;
-    }
     std::vector<ovrDrawSurface>& GetControllerSurfaces() {
         return Surfaces;
     }
@@ -130,12 +111,36 @@ class ovrInputDevice_TrackedRemote : public ovrInputDeviceBase {
    private:
     ovrInputTrackedRemoteCapabilities Caps;
     std::vector<ovrDrawSurface> Surfaces;
-    uint8_t LastRecenterCount;
-    ovrArmModel ArmModel;
-    jointHandles_t JointHandles;
     ovrTracking Tracking;
     uint32_t HapticState;
     float HapticsSimpleValue;
+};
+
+//==============================================================
+// ovrInputDevice_StandardPointer
+// Generic Input device for handling simple pointing and selecting interactions
+class ovrInputDevice_StandardPointer : public ovrInputDeviceBase {
+   public:
+    ovrInputDevice_StandardPointer(const ovrInputStandardPointerCapabilities& caps)
+        : ovrInputDeviceBase(), Caps(caps) {}
+
+    virtual ~ovrInputDevice_StandardPointer() {}
+
+    virtual const ovrInputCapabilityHeader* GetCaps() const override {
+        return &Caps.Header;
+    }
+    virtual ovrControllerType GetType() const override {
+        return Caps.Header.Type;
+    }
+    virtual ovrDeviceID GetDeviceID() const override {
+        return Caps.Header.DeviceID;
+    }
+    virtual const char* GetName() const override {
+        return "StandardPointer";
+    }
+
+   private:
+    ovrInputStandardPointerCapabilities Caps;
 };
 
 //==============================================================
@@ -219,16 +224,13 @@ class ovrVrInput : public OVRFW::ovrAppl {
     ovrParticleSystem::handle_t LaserPointerParticleHandle;
     bool LaserHit;
 
-    GlProgram ProgSingleTexture;
-    GlProgram ProgLitSpecularWithHighlight;
-    GlProgram ProgLitSpecular;
     GlProgram ProgOculusTouch;
 
-    ModelFile* ControllerModelOculusGo;
-    ModelFile* ControllerModelOculusGoPreLit;
-    ModelFile* ControllerModelOculusTouchLeft;
-    ModelFile* ControllerModelOculusTouchRight;
-    
+    ModelFile* ControllerModelOculusQuestTouchLeft;
+    ModelFile* ControllerModelOculusQuestTouchRight;
+    ModelFile* ControllerModelOculusQuest2TouchLeft;
+    ModelFile* ControllerModelOculusQuest2TouchRight;
+
     OVR::Vector3f SpecularLightDirection;
     OVR::Vector3f SpecularLightColor;
     OVR::Vector3f AmbientLightColor;
@@ -253,11 +255,11 @@ class ovrVrInput : public OVRFW::ovrAppl {
 
     OVRFW::ovrSurfaceRender SurfaceRender;
 
+    ovrDeviceType DeviceType;
+
    private:
     void ClearAndHideMenuItems();
-    ovrResult PopulateRemoteControllerInfo(
-        ovrInputDevice_TrackedRemote& trDevice,
-        bool recenteredController);
+    ovrResult PopulateRemoteControllerInfo(ovrInputDevice_TrackedRemote& trDevice);
     void ResetLaserPointer();
 
     int FindInputDevice(const ovrDeviceID deviceID) const;

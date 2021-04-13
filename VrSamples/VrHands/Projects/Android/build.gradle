@@ -1,5 +1,8 @@
+
 apply plugin: 'com.android.application'
 apply from: "${rootProject.projectDir}/VrApp.gradle"
+
+
 
 android {
   // This is the name of the generated apk file, which will have
@@ -7,6 +10,8 @@ android {
   // The filename doesn't effect the Android installation process.
   // Use only letters to remain compatible with the package name.
   project.archivesBaseName = "vrhands"
+
+  
 
   defaultConfig {
     // Gradle replaces the manifest package with this value, which must

@@ -335,8 +335,11 @@ inline jclass ovr_GetClassLoader(JNIEnv* jni, jobject contextObject) {
 // the "system" class loader, instead of the one associated with the application.
 // The following two functions can be used to find any class from any thread. These will
 // fatal error if the class is not found.
-inline jclass
-ovr_GetLocalClassReferenceWithLoader(JNIEnv* jni, jobject classLoader, const char* className) {
+inline jclass ovr_GetLocalClassReferenceWithLoader(
+    JNIEnv* jni,
+    jobject classLoader,
+    const char* className,
+    const bool fail = true) {
     JavaClass classLoaderClass(jni, jni->FindClass("java/lang/ClassLoader"));
     jmethodID loadClassMethodId = jni->GetMethodID(
         classLoaderClass.GetJClass(), "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
@@ -346,7 +349,11 @@ ovr_GetLocalClassReferenceWithLoader(JNIEnv* jni, jobject classLoader, const cha
         jni->CallObjectMethod(classLoader, loadClassMethodId, classNameString.GetJString()));
 
     if (localClass == 0) {
-        OVR_FAIL("FindClass( %s ) failed", className);
+        if (fail) {
+            OVR_FAIL("FindClass( %s ) failed", className);
+        } else {
+            OVR_WARN("FindClass( %s ) failed", className);
+        }
     }
 
     return localClass;
@@ -365,16 +372,23 @@ ovr_GetGlobalClassReferenceWithLoader(JNIEnv* jni, jobject classLoader, const ch
 // associated with the application. These will fatal error if the class is not found.
 
 // This can be called from any thread but does need the activity object.
-inline jclass
-ovr_GetLocalClassReference(JNIEnv* jni, jobject activityObject, const char* className) {
+inline jclass ovr_GetLocalClassReference(
+    JNIEnv* jni,
+    jobject activityObject,
+    const char* className,
+    const bool fail = true) {
     JavaObject classLoaderObject(jni, ovr_GetClassLoader(jni, activityObject));
 
-    return ovr_GetLocalClassReferenceWithLoader(jni, classLoaderObject.GetJObject(), className);
+    return ovr_GetLocalClassReferenceWithLoader(
+        jni, classLoaderObject.GetJObject(), className, fail);
 }
 // This can be called from any thread but does need the activity object.
-inline jclass
-ovr_GetGlobalClassReference(JNIEnv* jni, jobject activityObject, const char* className) {
-    JavaClass localClass(jni, ovr_GetLocalClassReference(jni, activityObject, className));
+inline jclass ovr_GetGlobalClassReference(
+    JNIEnv* jni,
+    jobject activityObject,
+    const char* className,
+    const bool fail = true) {
+    JavaClass localClass(jni, ovr_GetLocalClassReference(jni, activityObject, className, fail));
 
     // Turn it into a global reference so it can be safely used on other threads.
     jclass globalClass = (jclass)jni->NewGlobalRef(localClass.GetJClass());

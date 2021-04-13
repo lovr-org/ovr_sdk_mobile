@@ -9,7 +9,6 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.WindowManager;
 
 public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback {
   // Load the gles3jni library right away to make sure JNI_OnLoad() gets called as the very first
@@ -38,10 +37,6 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
     mView = new SurfaceView(this);
     setContentView(mView);
     mView.getHolder().addCallback(this);
-
-    // Force the screen to stay on, rather than letting it dim and shut off
-    // while the user is watching a movie.
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     mNativeHandle = GLES3JNILib.onCreate(this);
   }

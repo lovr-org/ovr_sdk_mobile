@@ -44,14 +44,14 @@ namespace OVR {
 class MemBuffer {
    public:
     MemBuffer() : Buffer(0), Length(0) {}
-    explicit MemBuffer(int length) : Buffer(malloc(length)), Length(length) {}
-    MemBuffer(const void* buffer, int length) : Buffer(buffer), Length(length) {}
+    explicit MemBuffer(int length) : Buffer(new char[length]), Length(length) {}
+    MemBuffer(void* buffer, int length) : Buffer(buffer), Length(length) {}
     ~MemBuffer() {}
 
     // Calls Free() on Buffer and sets it to NULL and lengrh to 0
     void FreeData() {
         if (Buffer != NULL) {
-            free((void*)Buffer);
+            delete[] static_cast<char*>(Buffer);
             Buffer = NULL;
         }
         Length = 0;
@@ -70,7 +70,7 @@ class MemBuffer {
         return false;
     }
 
-    const void* Buffer;
+    void* Buffer;
     int Length;
 };
 

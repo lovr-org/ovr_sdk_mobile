@@ -232,6 +232,7 @@ typedef struct {
     int presentQueueFamilyIndex;
     bool supportsMultiview;
     bool supportsFragmentDensity;
+    bool supportsLazyAllocate;
 
     // The logical device.
     VkDevice device;

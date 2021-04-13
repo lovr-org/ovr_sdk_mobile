@@ -18,7 +18,7 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include "VrApi_Types.h"
 #include "VrApi_Input.h"
 
-#include "Skeleton.h"
+#include "Input/Skeleton.h"
 
 namespace OVRFW {
 
