@@ -150,7 +150,7 @@ class VrCubeWorld : public ovrAppl {
 };
 
 VrCubeWorld::VrCubeWorld()
-    : ovrAppl(0, 0, CPU_LEVEL, GPU_LEVEL, true /* useMutliView */),
+    : ovrAppl(0, 0, CPU_LEVEL, GPU_LEVEL, true /* useMultiView */),
       SoundEffectPlayer(nullptr),
       GuiSys(nullptr),
       Locale(nullptr),

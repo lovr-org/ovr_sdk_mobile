@@ -28,7 +28,7 @@ class VrCinema : public OVRFW::ovrAppl {
         const int32_t renderThreadTid,
         const int cpuLevel,
         const int gpuLevel)
-        : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMutliView */),
+        : ovrAppl(mainThreadTid, renderThreadTid, cpuLevel, gpuLevel, true /* useMultiView */),
           UseSrgb(false),
           FreeMove(false),
           SceneModel(nullptr),

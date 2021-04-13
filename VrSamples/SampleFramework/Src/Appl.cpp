@@ -204,13 +204,6 @@ void ovrAppl::AppResumed(const ovrAppContext* /* context */) {}
 
 void ovrAppl::AppPaused(const ovrAppContext* /* context */) {}
 
-void ovrAppl::AppHandleInputShutdownRequest(ovrRendererOutput& out) {
-    /// detected back click - return to home
-    vrapi_ShowSystemUI(
-        reinterpret_cast<const ovrJava*>(Context->ContextForVrApi()),
-        VRAPI_SYS_UI_CONFIRM_QUIT_MENU);
-}
-
 static void
 SubmitLoadingIcon(ovrMobile* sessionObject, const uint64_t frameIndex, const double displayTime) {
     ovrLayer_Union2 layers[ovrMaxLayerCount] = {};
@@ -576,7 +569,10 @@ ovrApplFrameOut ovrAppl::Frame(ovrApplFrameIn& frameIn) {
     frameIn.Tracking.Eye[0] = eye1;
 #endif
 
-    return AppFrame(frameIn);
+    /// only update when focused or called out explicitly
+    bool updateApp = IsAppFocused || RunWhilePaused;
+
+    return updateApp ? AppFrame(frameIn) : ovrApplFrameOut();
 }
 
 void ovrAppl::RenderFrame(const ovrApplFrameIn& in) {
@@ -585,20 +581,6 @@ void ovrAppl::RenderFrame(const ovrApplFrameIn& in) {
     // but let the application override this
     out.FrameMatrices.EyeProjection[0] = in.Tracking.Eye[0].ProjectionMatrix;
     out.FrameMatrices.EyeProjection[1] = in.Tracking.Eye[1].ProjectionMatrix;
-
-    // Check for "Back" presses
-    bool backButtonPressed = false;
-    std::vector<ovrButton> backButtons = {ovrButton_B, ovrButton_Y, ovrButton_Back};
-    for (const auto& button : backButtons) {
-        if (in.Clicked(button)) {
-            backButtonPressed = true;
-            break;
-        }
-    }
-
-    if (!OverrideBackButtons && backButtonPressed) {
-        AppHandleInputShutdownRequest(out);
-    }
 
     AppRenderFrame(in, out);
 
@@ -723,6 +705,7 @@ void ovrAppl::HandleVrApiEvents(ovrApplFrameIn& in) {
                 // FOCUS_GAINED is sent when the application is in the foreground and has
                 // input focus. This may be due to a system overlay relinquishing focus
                 // back to the application.
+                IsAppFocused = true;
                 AppGainedFocus();
                 break;
             case VRAPI_EVENT_FOCUS_LOST:
@@ -730,6 +713,7 @@ void ovrAppl::HandleVrApiEvents(ovrApplFrameIn& in) {
                 // therefore does not have input focus. This may be due to a system overlay taking
                 // focus from the application. The application should take appropriate action when
                 // this occurs.
+                IsAppFocused = false;
                 AppLostFocus();
                 break;
             default:
@@ -781,9 +765,6 @@ void ovrAppl::AddTouchEvent(const int32_t action, const int32_t x, const int32_t
 void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
     in.LeftRemoteTracked = false;
     in.RightRemoteTracked = false;
-    in.SingleHandRemoteTracked = false;
-    in.SingleHandRemoteTrackpadMaxX = 0u;
-    in.SingleHandRemoteTrackpadMaxY = 0u;
     in.AllButtons = 0u;
     in.AllTouches = 0u;
 
@@ -817,33 +798,20 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
                 bool isLeft = (remoteCaps.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0;
                 bool isRight =
                     (remoteCaps.ControllerCapabilities & ovrControllerCaps_RightHand) != 0;
-                /// allow for single-handed controlles
-                bool isGearVR =
-                    (remoteCaps.ControllerCapabilities & ovrControllerCaps_ModelGearVR) != 0;
-                bool isOculusGO =
-                    (remoteCaps.ControllerCapabilities & ovrControllerCaps_ModelOculusGo) != 0;
-                bool isSingleHandRemote = isGearVR || isOculusGO;
 
                 ovrInputStateTrackedRemote state;
                 state.Header.ControllerType = ovrControllerType_TrackedRemote;
 
                 if (ovrSuccess ==
                     vrapi_GetCurrentInputState(GetSessionObject(), deviceID, &state.Header)) {
-                    if (isLeft && !isSingleHandRemote) {
+                    if (isLeft) {
                         in.LeftRemoteTracked = true;
                         in.LeftRemote = state;
                     }
 
-                    if (isRight && !isSingleHandRemote) {
+                    if (isRight) {
                         in.RightRemoteTracked = true;
                         in.RightRemote = state;
-                    }
-
-                    if (isSingleHandRemote) {
-                        in.SingleHandRemoteTracked = true;
-                        in.SingleHandRemote = state;
-                        in.SingleHandRemoteTrackpadMaxX = remoteCaps.TrackpadMaxX;
-                        in.SingleHandRemoteTrackpadMaxY = remoteCaps.TrackpadMaxY;
                     }
                 }
             }
@@ -858,10 +826,6 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
     if (in.RightRemoteTracked) {
         in.AllButtons |= in.RightRemote.Buttons;
         in.AllTouches |= in.RightRemote.Touches;
-    }
-    if (in.SingleHandRemoteTracked) {
-        in.AllButtons |= in.SingleHandRemote.Buttons;
-        in.AllTouches |= in.SingleHandRemote.Touches;
     }
 
     // Delta from last frame

@@ -74,6 +74,9 @@ void main()
 bool Vr360VideoPlayer::AppInit(const OVRFW::ovrAppContext* appContext) {
     ALOGV("AppInit - enter");
 
+    /// Most of the rendering here happens on Update
+    SetRunWhilePaused(true);
+
     /// Init File System / APK services
     const ovrJava& ctx = *(reinterpret_cast<const ovrJava*>(appContext->ContextForVrApi()));
     FileSys = OVRFW::ovrFileSys::Create(ctx);

@@ -163,12 +163,6 @@ typedef enum ovrStructureType_ {
 /// A VR-capable device.
 typedef enum ovrDeviceType_ {
     
-    // Standalone Devices
-    VRAPI_DEVICE_TYPE_OCULUSGO_START = 64,
-    VRAPI_DEVICE_TYPE_OCULUSGO = VRAPI_DEVICE_TYPE_OCULUSGO_START,
-    VRAPI_DEVICE_TYPE_MIVR_STANDALONE = VRAPI_DEVICE_TYPE_OCULUSGO_START + 1, //< China-only SKU
-    VRAPI_DEVICE_TYPE_OCULUSGO_END = 127,
-
     VRAPI_DEVICE_TYPE_OCULUSQUEST_START = 256,
         VRAPI_DEVICE_TYPE_OCULUSQUEST = VRAPI_DEVICE_TYPE_OCULUSQUEST_START + 3,
     VRAPI_DEVICE_TYPE_OCULUSQUEST_END = 319,
@@ -273,12 +267,7 @@ typedef enum ovrSystemProperty_ {
 /// Configurable VrApi properties.
 typedef enum ovrProperty_ {
         VRAPI_FOVEATION_LEVEL = 15, //< Used by apps that want to control swapchain foveation levels.
-        VRAPI_REORIENT_HMD_ON_CONTROLLER_RECENTER =
-        17, //< Used to determine if a controller recenter should also reorient the headset.
-    VRAPI_LATCH_BACK_BUTTON_ENTIRE_FRAME =
-        18, //< Used to determine if the 'short press' back button should lasts an entire frame.
-    VRAPI_BLOCK_REMOTE_BUTTONS_WHEN_NOT_EMULATING_HMT =
-        19, //< Used to not send the remote back button java events to the apps.
+    
     VRAPI_EAT_NATIVE_GAMEPAD_EVENTS =
         20, //< Used to tell the runtime not to eat gamepad events.  If this is false on a native
     // app, the app must be listening for the events.
@@ -323,8 +312,7 @@ typedef enum ovrSystemStatus_ {
     
     VRAPI_SYS_STATUS_FRONT_BUFFER_PROTECTED =
         128, //< VRAPI_TRUE if the front buffer is allocated in TrustZone memory.
-    VRAPI_SYS_STATUS_FRONT_BUFFER_565 = 129, //< VRAPI_TRUE if the front buffer is 16-bit 5:6:5
-    VRAPI_SYS_STATUS_FRONT_BUFFER_SRGB =
+        VRAPI_SYS_STATUS_FRONT_BUFFER_SRGB =
         130, //< VRAPI_TRUE if the front buffer uses the sRGB color space.
 
     VRAPI_SYS_STATUS_SCREEN_CAPTURE_RUNNING =
@@ -408,11 +396,7 @@ typedef enum ovrModeFlags_ {
     /// requires the WindowSurface to be allocated from TimeWarp, via
     /// specifying the nativeWindow via VRAPI_MODE_FLAG_NATIVE_WINDOW.
     VRAPI_MODE_FLAG_FRONT_BUFFER_PROTECTED = 0x00020000,
-
-    /// Create a 16-bit 5:6:5 front buffer.
-    VRAPI_MODE_FLAG_FRONT_BUFFER_565 = 0x00040000,
-
-    /// Create a front buffer using the sRGB color space.
+        /// Create a front buffer using the sRGB color space.
     VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB = 0x00080000,
 
     /// If set, indicates the OpenGL ES Context was created with EGL_CONTEXT_OPENGL_NO_ERROR_KHR
@@ -443,9 +427,9 @@ typedef struct ovrModeParms_ {
     /// Using EGL this is an EGLDisplay.
     unsigned long long Display;
 
-    /// The window surface to use for asynchronous time warp rendering.
-    /// Using EGL this can be the EGLSurface created by the application for the ANativeWindow.
-    /// This should be the ANativeWIndow itself (requires VRAPI_MODE_FLAG_NATIVE_WINDOW).
+    /// The ANativeWIndow associated with the application's Surface (requires
+    /// VRAPI_MODE_FLAG_NATIVE_WINDOW). The ANativeWIndow is used for asynchronous time warp
+    /// rendering.
     unsigned long long WindowSurface;
 
     /// The resources from this context will be shared with the asynchronous time warp.

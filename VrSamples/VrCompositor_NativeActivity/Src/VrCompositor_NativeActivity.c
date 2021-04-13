@@ -1721,7 +1721,6 @@ typedef struct {
     int RenderThreadTid;
     ovrLayer_Union2 Layers[ovrMaxLayerCount];
     int LayerCount;
-    bool BackButtonDownLastFrame;
     bool TouchPadDownLastFrame;
     ovrRenderer Renderer;
 } ovrApp;
@@ -1742,7 +1741,6 @@ static void ovrApp_Clear(ovrApp* app) {
     app->GpuLevel = 2;
     app->MainThreadTid = 0;
     app->RenderThreadTid = 0;
-    app->BackButtonDownLastFrame = false;
     app->TouchPadDownLastFrame = false;
 
     ovrEgl_Clear(&app->Egl);
@@ -1830,7 +1828,6 @@ static void ovrApp_HandleVrModeChanges(ovrApp* app) {
 }
 
 static void ovrApp_HandleInput(ovrApp* app) {
-    bool backButtonDownThisFrame = false;
     bool touchPadDownThisFrame = false;
 
     for (int i = 0;; i++) {
@@ -1845,9 +1842,6 @@ static void ovrApp_HandleInput(ovrApp* app) {
             trackedRemoteState.Header.ControllerType = ovrControllerType_TrackedRemote;
             result = vrapi_GetCurrentInputState(app->Ovr, cap.DeviceID, &trackedRemoteState.Header);
             if (result == ovrSuccess) {
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Back;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_B;
-                backButtonDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Y;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Enter;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_A;
                 touchPadDownThisFrame |= trackedRemoteState.Buttons & ovrButton_Trigger;
@@ -1856,19 +1850,11 @@ static void ovrApp_HandleInput(ovrApp* app) {
     }
 
     bool touchPadDownLastFrame = app->TouchPadDownLastFrame;
-    bool backButtonDownLastFrame = app->BackButtonDownLastFrame;
     app->TouchPadDownLastFrame = touchPadDownThisFrame;
-    app->BackButtonDownLastFrame = backButtonDownThisFrame;
 
     if (touchPadDownLastFrame && !touchPadDownThisFrame) {
         // Cycle through the background types
         app->Scene.BackGroundType = (app->Scene.BackGroundType + 1) % MAX_BACKGROUND_TYPES;
-    }
-
-    if (backButtonDownLastFrame && !backButtonDownThisFrame) {
-        ALOGV("back button short press");
-        ALOGV("        vrapi_ShowSystemUI( confirmQuit )");
-        vrapi_ShowSystemUI(&app->Java, VRAPI_SYS_UI_CONFIRM_QUIT_MENU);
     }
 }
 
