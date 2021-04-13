@@ -508,9 +508,15 @@ ovrApplFrameOut ovrAppl::Frame(ovrApplFrameIn& frameIn) {
     frameIn.FrameIndex = FrameIndex;
     frameIn.PredictedDisplayTime = vrapi_GetPredictedDisplayTime(SessionObject, FrameIndex);
     frameIn.RealTimeInSeconds = vrapi_GetTimeInSeconds();
-    frameIn.Tracking = vrapi_GetPredictedTracking2(SessionObject, frameIn.PredictedDisplayTime);
+
+    Tracking = vrapi_GetPredictedTracking2(SessionObject, frameIn.PredictedDisplayTime);
+    frameIn.HeadPose = Tracking.HeadPose.Pose;
+    frameIn.Eye[0].ViewMatrix = Tracking.Eye[0].ViewMatrix;
+    frameIn.Eye[1].ViewMatrix = Tracking.Eye[1].ViewMatrix;
+    frameIn.Eye[0].ProjectionMatrix = Tracking.Eye[0].ProjectionMatrix;
+    frameIn.Eye[1].ProjectionMatrix = Tracking.Eye[1].ProjectionMatrix;
     frameIn.EyeHeight = vrapi_GetEyeHeight(&eyeLevelTrackingPose, &trackingPose);
-    frameIn.IPD = vrapi_GetInterpupillaryDistance(&frameIn.Tracking);
+    frameIn.IPD = vrapi_GetInterpupillaryDistance(&Tracking);
     const ovrJava* java = reinterpret_cast<const ovrJava*>(Context->ContextForVrApi());
     frameIn.RecenterCount = vrapi_GetSystemStatusInt(java, VRAPI_SYS_STATUS_RECENTER_COUNT);
 
@@ -579,22 +585,22 @@ void ovrAppl::RenderFrame(const ovrApplFrameIn& in) {
     ovrRendererOutput out = {};
     // default the Projection for each eye to whatever the input frame has,
     // but let the application override this
-    out.FrameMatrices.EyeProjection[0] = in.Tracking.Eye[0].ProjectionMatrix;
-    out.FrameMatrices.EyeProjection[1] = in.Tracking.Eye[1].ProjectionMatrix;
+    out.FrameMatrices.EyeProjection[0] = in.Eye[0].ProjectionMatrix;
+    out.FrameMatrices.EyeProjection[1] = in.Eye[1].ProjectionMatrix;
 
     AppRenderFrame(in, out);
 
     const ovrLayerHeader2* layerPtrs[ovrMaxLayerCount] = {};
-    for (int i = 0; i < out.NumLayers; ++i) {
-        layerPtrs[i] = &out.Layers[i].Header;
+    for (int i = 0; i < NumLayers; ++i) {
+        layerPtrs[i] = &Layers[i].Header;
     }
 
     ovrSubmitFrameDescription2 frameDesc = {};
-    frameDesc.Flags = out.FrameFlags;
+    frameDesc.Flags = FrameFlags;
     frameDesc.SwapInterval = 1;
     frameDesc.FrameIndex = GetFrameIndex();
     frameDesc.DisplayTime = GetDisplayTime();
-    frameDesc.LayerCount = out.NumLayers;
+    frameDesc.LayerCount = NumLayers;
     frameDesc.Layers = layerPtrs;
 
     vrapi_SubmitFrame2(GetSessionObject(), &frameDesc);
@@ -630,24 +636,28 @@ void ovrAppl::AppEyeGLStateSetup(
 }
 
 void ovrAppl::DefaultRenderFrame_Loading(const ovrApplFrameIn& in, ovrRendererOutput& out) {
+    NumLayers = 0;
+    FrameFlags = 0u;
     // black layer
     ovrLayerProjection2 blackLayer = vrapi_DefaultLayerBlackProjection2();
     blackLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-    out.Layers[out.NumLayers++].Projection = blackLayer;
+    Layers[NumLayers++].Projection = blackLayer;
     // loading icon layer
     ovrLayerLoadingIcon2 iconLayer = vrapi_DefaultLayerLoadingIcon2();
     iconLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-    out.Layers[out.NumLayers++].LoadingIcon = iconLayer;
-    out.FrameFlags |= VRAPI_FRAME_FLAG_FLUSH;
+    Layers[NumLayers++].LoadingIcon = iconLayer;
+    FrameFlags |= VRAPI_FRAME_FLAG_FLUSH;
 }
 
 void ovrAppl::DefaultRenderFrame_Running(const ovrApplFrameIn& in, ovrRendererOutput& out) {
+    NumLayers = 0;
+    FrameFlags = 0u;
     // set up layers
-    int& layerCount = out.NumLayers;
+    int& layerCount = NumLayers;
     layerCount = 0;
-    ovrLayerProjection2& layer = out.Layers[layerCount].Projection;
+    ovrLayerProjection2& layer = Layers[layerCount].Projection;
     layer = vrapi_DefaultLayerProjection2();
-    layer.HeadPose = in.Tracking.HeadPose;
+    layer.HeadPose = Tracking.HeadPose;
     for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; ++eye) {
         ovrFramebuffer* framebuffer = Framebuffer[NumFramebuffers == 1 ? 0 : eye].get();
         layer.Textures[eye].ColorSwapChain = framebuffer->ColorTextureSwapChain;
@@ -674,10 +684,12 @@ void ovrAppl::DefaultRenderFrame_Running(const ovrApplFrameIn& in, ovrRendererOu
 }
 
 void ovrAppl::DefaultRenderFrame_Ending(const ovrApplFrameIn& in, ovrRendererOutput& out) {
+    NumLayers = 0;
+    FrameFlags = 0u;
     ovrLayerProjection2 layer = vrapi_DefaultLayerBlackProjection2();
     layer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-    out.Layers[out.NumLayers++].Projection = layer;
-    out.FrameFlags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
+    Layers[NumLayers++].Projection = layer;
+    FrameFlags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
 }
 
 void ovrAppl::HandleVrApiEvents(ovrApplFrameIn& in) {
@@ -806,26 +818,23 @@ void ovrAppl::HandleVRInputEvents(ovrApplFrameIn& in) {
                     vrapi_GetCurrentInputState(GetSessionObject(), deviceID, &state.Header)) {
                     if (isLeft) {
                         in.LeftRemoteTracked = true;
-                        in.LeftRemote = state;
+                        in.LeftRemoteJoystick = state.Joystick;
+                        in.LeftRemoteIndexTrigger = state.IndexTrigger;
+                        in.LeftRemoteGripTrigger = state.GripTrigger;
+                        in.AllButtons |= state.Buttons;
+                        in.AllTouches |= state.Touches;
                     }
-
                     if (isRight) {
                         in.RightRemoteTracked = true;
-                        in.RightRemote = state;
+                        in.RightRemoteJoystick = state.Joystick;
+                        in.RightRemoteIndexTrigger = state.IndexTrigger;
+                        in.RightRemoteGripTrigger = state.GripTrigger;
+                        in.AllButtons |= state.Buttons;
+                        in.AllTouches |= state.Touches;
                     }
                 }
             }
         }
-    }
-
-    // Aggregate button events
-    if (in.LeftRemoteTracked) {
-        in.AllButtons |= in.LeftRemote.Buttons;
-        in.AllTouches |= in.LeftRemote.Touches;
-    }
-    if (in.RightRemoteTracked) {
-        in.AllButtons |= in.RightRemote.Buttons;
-        in.AllTouches |= in.RightRemote.Touches;
     }
 
     // Delta from last frame
@@ -841,8 +850,6 @@ void ovrAppl::Run(struct android_app* app) {
     ALOGV("----------------------------------------------------------------");
     ALOGV("android_main()");
     ALOGV("----------------------------------------------------------------");
-
-    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
     std::unique_ptr<OVRFW::ovrAndroidContext> ctx =
         std::unique_ptr<OVRFW::ovrAndroidContext>(new OVRFW::ovrAndroidContext());

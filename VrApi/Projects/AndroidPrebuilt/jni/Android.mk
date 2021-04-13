@@ -1,16 +1,14 @@
 LOCAL_PATH := $(call my-dir)
-
 ifeq ($(OVR_DEBUG),1)
   BUILDTYPE := Debug
 else
  BUILDTYPE := Release
 endif
 
-
 #--------------------------------------------------------
 # libvrapi.so
 #
-# VrApi Loader
+# VrApi
 #--------------------------------------------------------
 include $(CLEAR_VARS)
 

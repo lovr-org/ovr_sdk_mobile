@@ -262,6 +262,39 @@ Vulkan device.
 ================================================================================================================================
 */
 
+static uint32_t VkGetMemoryTypeIndex(
+    ovrVkDevice* device,
+    const uint32_t typeBits,
+    const VkMemoryPropertyFlags requiredProperties) {
+    // Search memory types to find the index with the requested properties.
+    for (uint32_t type = 0; type < device->physicalDeviceMemoryProperties.memoryTypeCount; type++) {
+        if ((typeBits & (1 << type)) != 0) {
+            // Test if this memory type has the required properties.
+            const VkFlags propertyFlags =
+                device->physicalDeviceMemoryProperties.memoryTypes[type].propertyFlags;
+            if ((propertyFlags & requiredProperties) == requiredProperties) {
+                return type;
+            }
+        }
+    }
+    ALOGE("Memory type %d with properties %d not found.", typeBits, requiredProperties);
+    return 0;
+}
+
+// returns whether one or more memory types has the required properties or not
+static bool VkSupportsMemoryProperties(
+    ovrVkDevice* device,
+    const VkMemoryPropertyFlags requiredProperties) {
+    for (uint32_t type = 0; type < device->physicalDeviceMemoryProperties.memoryTypeCount; type++) {
+        const VkFlags propertyFlags =
+            device->physicalDeviceMemoryProperties.memoryTypes[type].propertyFlags;
+        if ((propertyFlags & requiredProperties) == requiredProperties) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static const VkQueueFlags requiredQueueFlags = VK_QUEUE_GRAPHICS_BIT;
 static const int queueCount = 1;
 
@@ -538,6 +571,12 @@ bool ovrVkDevice_SelectPhysicalDevice(
                 VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME;
         }
 
+        device->supportsLazyAllocate = VkSupportsMemoryProperties(
+            device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+        if (device->supportsLazyAllocate) {
+            ALOGV("Device supports lazy allocated memory pools");
+        }
+
         break;
     }
 
@@ -700,25 +739,6 @@ void ovrVkDevice_Destroy(ovrVkDevice* device) {
     pthread_mutex_destroy(&device->queueFamilyMutex);
 
     VC(device->vkDestroyDevice(device->device, VK_ALLOCATOR));
-}
-
-static uint32_t VkGetMemoryTypeIndex(
-    ovrVkDevice* device,
-    const uint32_t typeBits,
-    const VkMemoryPropertyFlags requiredProperties) {
-    // Search memory types to find the index with the requested properties.
-    for (uint32_t type = 0; type < device->physicalDeviceMemoryProperties.memoryTypeCount; type++) {
-        if ((typeBits & (1 << type)) != 0) {
-            // Test if this memory type has the required properties.
-            const VkFlags propertyFlags =
-                device->physicalDeviceMemoryProperties.memoryTypes[type].propertyFlags;
-            if ((propertyFlags & requiredProperties) == requiredProperties) {
-                return type;
-            }
-        }
-    }
-    ALOGE("Memory type %d with properties %d not found.", typeBits, requiredProperties);
-    return 0;
 }
 
 void ovrGpuDevice_CreateShader(
@@ -946,7 +966,8 @@ void ovrVkDepthBuffer_Create(
     imageCreateInfo.arrayLayers = numLayers;
     imageCreateInfo.samples = (VkSampleCountFlagBits)sampleCount;
     imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageCreateInfo.usage =
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
     imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageCreateInfo.queueFamilyIndexCount = 0;
     imageCreateInfo.pQueueFamilyIndices = NULL;
@@ -959,12 +980,16 @@ void ovrVkDepthBuffer_Create(
     VC(context->device->vkGetImageMemoryRequirements(
         context->device->device, depthBuffer->image, &memoryRequirements));
 
+    const bool isLazyAlloc = context->device->supportsLazyAllocate;
+    const VkMemoryPropertyFlags depthMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+        (isLazyAlloc ? VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT : 0);
+
     VkMemoryAllocateInfo memoryAllocateInfo;
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocateInfo.pNext = NULL;
     memoryAllocateInfo.allocationSize = memoryRequirements.size;
-    memoryAllocateInfo.memoryTypeIndex = VkGetMemoryTypeIndex(
-        context->device, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    memoryAllocateInfo.memoryTypeIndex =
+        VkGetMemoryTypeIndex(context->device, memoryRequirements.memoryTypeBits, depthMemFlags);
 
     VK(context->device->vkAllocateMemory(
         context->device->device, &memoryAllocateInfo, VK_ALLOCATOR, &depthBuffer->memory));
@@ -1538,7 +1563,7 @@ bool ovrGpuTexture_CreateInternal(
         ((usageFlags & OVR_TEXTURE_USAGE_SAMPLED) != 0 ? VK_IMAGE_USAGE_SAMPLED_BIT : 0) |
         // If this image is rendered to.
         ((usageFlags & OVR_TEXTURE_USAGE_COLOR_ATTACHMENT) != 0
-             ? (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+             ? (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
              : 0) |
         // If this image is used for storage.
         ((usageFlags & OVR_TEXTURE_USAGE_STORAGE) != 0 ? VK_IMAGE_USAGE_STORAGE_BIT : 0) |
@@ -1572,12 +1597,17 @@ bool ovrGpuTexture_CreateInternal(
     VC(context->device->vkGetImageMemoryRequirements(
         context->device->device, texture->image, &memoryRequirements));
 
+    const bool isLazyAlloc =
+        context->device->supportsLazyAllocate && sampleCount > OVR_SAMPLE_COUNT_1;
+    const VkMemoryPropertyFlags texMemFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+        (isLazyAlloc ? VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT : 0);
+
     VkMemoryAllocateInfo memoryAllocateInfo;
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocateInfo.pNext = NULL;
     memoryAllocateInfo.allocationSize = memoryRequirements.size;
-    memoryAllocateInfo.memoryTypeIndex = VkGetMemoryTypeIndex(
-        context->device, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    memoryAllocateInfo.memoryTypeIndex =
+        VkGetMemoryTypeIndex(context->device, memoryRequirements.memoryTypeBits, texMemFlags);
 
     VK(context->device->vkAllocateMemory(
         context->device->device, &memoryAllocateInfo, VK_ALLOCATOR, &texture->memory));

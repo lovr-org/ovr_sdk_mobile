@@ -19,7 +19,6 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include <pthread.h>
 #include <sys/prctl.h> // for prctl( PR_SET_NAME )
 #include <android/log.h>
-#include <android/window.h> // for AWINDOW_FLAG_KEEP_SCREEN_ON
 #include <android/native_window_jni.h> // for native window JNI
 #include <android_native_app_glue.h>
 
@@ -1859,8 +1858,6 @@ void android_main(struct android_app* app) {
     ALOGV("----------------------------------------------------------------");
     ALOGV("android_app_entry()");
     ALOGV("    android_main()");
-
-    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
     ovrJava java;
     java.Vm = app->activity->vm;

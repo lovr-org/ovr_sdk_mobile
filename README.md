@@ -14,6 +14,28 @@ For documentation on developing for Oculus devices that use Android, see our Mob
 
 # Version history
 
+## Oculus Mobile SDK 23.0 (API 1.40.0) (2020-12-19)
+
+### New Features
+
+* 90 Hz mode is now supported. For information on using this feature, see the Refresh Rate topic.
+
+### API Changes
+
+* The ovrDeviceType value, VRAPI_DEVICE_TYPE_OCULUSQUEST2 has been added to the API.
+* The ovrTouch bit flags, ovrTouch_ThumbRest, ovrTouch_LThumbRest, and ovrTouch_RThumbRest have been added to the API.
+* The ovrEventType value, VRAPI_EVENT_DISPLAY_REFRESH_RATE_CHANGE, has been added to the API. This event is sent when the display refresh rate is * changed by the system.
+* The ovrSystemStatus value, VRAPI_SYS_STATUS_SYSTEM_UX_ACTIVE, has been removed from the API.
+* The ovrSystemProperty value, VRAPI_SYS_PROP_VIDEO_DECODER_LIMIT, and corresponding structure, ovrVideoDecoderLimit, have been removed from the * API.
+
+### Bug Fixes
+
+* There are no major bug fixes with this release.
+
+### Known SDK Issues
+
+* There are no known issues with this release.
+
 ## Oculus Mobile SDK 20.0 (API 1.37.0) (2020-09-02)
 
 ### API Changes

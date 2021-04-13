@@ -708,10 +708,6 @@ static inline ovrFrameParms vrapi_DefaultFrameParms(
     return parms;
 }
 
-//-----------------------------------------------------------------
-// Layer Types - default initialization.
-//-----------------------------------------------------------------
-
 static inline ovrLayerProjection2 vrapi_DefaultLayerProjection2() {
     ovrLayerProjection2 layer = {};
 
@@ -742,10 +738,6 @@ static inline ovrLayerProjection2 vrapi_DefaultLayerProjection2() {
 
     return layer;
 }
-
-//-----------------------------------------------------------------
-// Layer Types - default initialization.
-//-----------------------------------------------------------------
 
 static inline ovrLayerProjection2 vrapi_DefaultLayerBlackProjection2() {
     ovrLayerProjection2 layer = {};
@@ -973,6 +965,7 @@ static inline ovrLayerFishEye2 vrapi_DefaultLayerFishEye2() {
 
     return layer;
 }
+
 
 
 

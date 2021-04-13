@@ -78,7 +78,10 @@ typedef enum ovrTouch_ {
     ovrTouch_LThumb = 0x00000400, //< The Left controller Joystick has a finger/thumb resting on it.
     ovrTouch_RThumb =
         0x00000800, //< The Right controller Joystick has a finger/thumb resting on it.
-        ovrTouch_EnumSize
+    ovrTouch_ThumbRest = 0x00001000, // Thumb Rest
+    ovrTouch_LThumbRest = 0x00002000, // Left Thumb Rest
+    ovrTouch_RThumbRest = 0x00004000, // Right Thumb Rest
+    ovrTouch_EnumSize
 } ovrTouch;
 
 /// Specifies which controller is connected; multiple can be connected at once.
@@ -133,9 +136,8 @@ typedef enum ovrControllerCapabilities_ {
     ovrControllerCaps_HasJoystick = 0x00002000, //< Controller has a joystick.
     ovrControllerCaps_ModelOculusTouch = 0x00004000, //< Oculus Touch Controller For Oculus Quest
 
-    
     ovrControllerCaps_EnumSize = 0x7fffffff
-} ovrControllerCapabilties;
+} ovrControllerCapabilities;
 
 //-----------------------------------------------------------------
 // Tracked Remote Capabilities

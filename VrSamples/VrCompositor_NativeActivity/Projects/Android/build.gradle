@@ -1,5 +1,8 @@
+
 apply plugin: 'com.android.application'
 apply from: "${rootProject.projectDir}/VrApp.gradle"
+
+
 
 android {
   // This is the name of the generated apk file, which will have
@@ -8,10 +11,12 @@ android {
   // Use only letters to remain compatible with the package name.
   project.archivesBaseName = "vrcompositorna"
 
+
   dependencies {
-      implementation 'com.android.support:appcompat-v7:26.0.0'
+    implementation 'com.android.support:appcompat-v7:26.0.0'
   }
-  
+
+
   defaultConfig {
     // Gradle replaces the manifest package with this value, which must
     // be unique on a system.  If you don't change it, a new app
@@ -37,12 +42,12 @@ android {
       manifest.srcFile 'AndroidManifest.xml'
       java.srcDirs = ['../../java']
       jniLibs.srcDir 'libs'
-      res.srcDirs = ['../../res']
+
       assets.srcDirs = ['../../assets']
     }
   }
 
-  lintOptions{
-      disable 'ExpiredTargetSdkVersion'
+  lintOptions {
+    disable 'ExpiredTargetSdkVersion'
   }
 }
