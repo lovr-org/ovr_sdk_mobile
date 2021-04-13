@@ -299,11 +299,14 @@ ovrVrInput::ovrVrInput(
       LaserPointerBeamHandle(),
       LaserPointerParticleHandle(),
       LaserHit(false),
-      ControllerModelOculusTouchLeft(nullptr),
-      ControllerModelOculusTouchRight(nullptr),
-            LastGamepadUpdateTimeInSeconds(0),
+      ControllerModelOculusQuestTouchLeft(nullptr),
+      ControllerModelOculusQuestTouchRight(nullptr),
+      ControllerModelOculusQuest2TouchLeft(nullptr),
+      ControllerModelOculusQuest2TouchRight(nullptr),
+      LastGamepadUpdateTimeInSeconds(0),
       Ribbons{nullptr, nullptr},
-      ActiveInputDeviceID(uint32_t(-1)) {}
+      ActiveInputDeviceID(uint32_t(-1)),
+      DeviceType(ovrDeviceType::VRAPI_DEVICE_TYPE_OCULUSQUEST) {}
 
 //==============================
 // ovrVrInput::~ovrVrInput
@@ -312,11 +315,15 @@ ovrVrInput::~ovrVrInput() {
         delete Ribbons[i];
         Ribbons[i] = nullptr;
     }
-    delete ControllerModelOculusTouchLeft;
-    ControllerModelOculusTouchLeft = nullptr;
-    delete ControllerModelOculusTouchRight;
-    ControllerModelOculusTouchRight = nullptr;
-        delete SoundEffectPlayer;
+    delete ControllerModelOculusQuestTouchLeft;
+    ControllerModelOculusQuestTouchLeft = nullptr;
+    delete ControllerModelOculusQuestTouchRight;
+    ControllerModelOculusQuestTouchRight = nullptr;
+    delete ControllerModelOculusQuest2TouchLeft;
+    ControllerModelOculusQuest2TouchLeft = nullptr;
+    delete ControllerModelOculusQuest2TouchRight;
+    ControllerModelOculusQuest2TouchRight = nullptr;
+    delete SoundEffectPlayer;
     SoundEffectPlayer = nullptr;
     delete RemoteBeamRenderer;
     RemoteBeamRenderer = nullptr;
@@ -334,15 +341,15 @@ ovrVrInput::~ovrVrInput() {
 //==============================
 // ovrVrInput::AppInit
 bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
-    const ovrJava* java = reinterpret_cast<const ovrJava*>(context->ContextForVrApi());
-
-    FileSys = ovrFileSys::Create(*java);
+    const ovrJava& jj = *(reinterpret_cast<const ovrJava*>(context->ContextForVrApi()));
+    const xrJava ctx = JavaContextConvert(jj);
+    FileSys = OVRFW::ovrFileSys::Create(ctx);
     if (nullptr == FileSys) {
         ALOGE("Couldn't create FileSys");
         return false;
     }
 
-    Locale = ovrLocale::Create(*java->Env, java->ActivityObject, "default");
+    Locale = ovrLocale::Create(*ctx.Env, ctx.ActivityObject, "default");
     if (nullptr == Locale) {
         ALOGE("Couldn't create Locale");
         return false;
@@ -361,7 +368,7 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         return false;
     }
 
-    GuiSys = OvrGuiSys::Create(context);
+    GuiSys = OvrGuiSys::Create(&ctx);
     if (nullptr == GuiSys) {
         ALOGE("Couldn't create GUI");
         return false;
@@ -402,15 +409,15 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         programs.ProgBaseColorEmissivePBR = &ProgOculusTouch;
         programs.ProgSkinnedBaseColorEmissivePBR = &ProgOculusTouch;
         MaterialParms materials;
-        ControllerModelOculusTouchLeft =
+        ControllerModelOculusQuestTouchLeft =
             LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
 
-        if (ControllerModelOculusTouchLeft == NULL ||
-            static_cast<int>(ControllerModelOculusTouchLeft->Models.size()) < 1) {
+        if (ControllerModelOculusQuestTouchLeft == NULL ||
+            static_cast<int>(ControllerModelOculusQuestTouchLeft->Models.size()) < 1) {
             ALOGE_FAIL("Couldn't load Oculus Touch for Oculus Quest Controller left model");
         }
 
-        for (auto& model : ControllerModelOculusTouchLeft->Models) {
+        for (auto& model : ControllerModelOculusQuestTouchLeft->Models) {
             auto& gc = model.surfaces[0].surfaceDef.graphicsCommand;
             gc.UniformData[0].Data = &gc.Textures[0];
             gc.UniformData[1].Data = &SpecularLightDirection;
@@ -430,16 +437,16 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         programs.ProgBaseColorEmissivePBR = &ProgOculusTouch;
         programs.ProgSkinnedBaseColorEmissivePBR = &ProgOculusTouch;
         MaterialParms materials;
-        ControllerModelOculusTouchRight =
+        ControllerModelOculusQuestTouchRight =
             LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
 
-        if (ControllerModelOculusTouchRight == NULL ||
-            static_cast<int>(ControllerModelOculusTouchRight->Models.size()) < 1) {
+        if (ControllerModelOculusQuestTouchRight == NULL ||
+            static_cast<int>(ControllerModelOculusQuestTouchRight->Models.size()) < 1) {
             ALOGE_FAIL(
                 "Couldn't load Oculus Touch for Oculus Quest Controller Controller right model");
         }
 
-        for (auto& model : ControllerModelOculusTouchRight->Models) {
+        for (auto& model : ControllerModelOculusQuestTouchRight->Models) {
             auto& gc = model.surfaces[0].surfaceDef.graphicsCommand;
             gc.UniformData[0].Data = &gc.Textures[0];
             gc.UniformData[1].Data = &SpecularLightDirection;
@@ -449,7 +456,64 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
         }
     }
 
-    
+    {
+        ModelGlPrograms programs;
+        const char* controllerModelFile =
+            "apk:///assets/oculusQuest2_oculusTouch_Left.gltf.ovrscene";
+        programs.ProgSingleTexture = &ProgOculusTouch;
+        programs.ProgBaseColorPBR = &ProgOculusTouch;
+        programs.ProgSkinnedBaseColorPBR = &ProgOculusTouch;
+        programs.ProgLightMapped = &ProgOculusTouch;
+        programs.ProgBaseColorEmissivePBR = &ProgOculusTouch;
+        programs.ProgSkinnedBaseColorEmissivePBR = &ProgOculusTouch;
+        MaterialParms materials;
+        ControllerModelOculusQuest2TouchLeft =
+            LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
+
+        if (ControllerModelOculusQuest2TouchLeft == NULL ||
+            static_cast<int>(ControllerModelOculusQuest2TouchLeft->Models.size()) < 1) {
+            ALOGE_FAIL("Couldn't load Oculus Touch for Oculus Quest Controller left model");
+        }
+
+        for (auto& model : ControllerModelOculusQuest2TouchLeft->Models) {
+            auto& gc = model.surfaces[0].surfaceDef.graphicsCommand;
+            gc.UniformData[0].Data = &gc.Textures[0];
+            gc.UniformData[1].Data = &SpecularLightDirection;
+            gc.UniformData[2].Data = &SpecularLightColor;
+            gc.UniformData[3].Data = &AmbientLightColor;
+            gc.UniformData[4].Data = &gc.Textures[1];
+        }
+    }
+    {
+        ModelGlPrograms programs;
+        const char* controllerModelFile =
+            "apk:///assets/oculusQuest2_oculusTouch_Right.gltf.ovrscene";
+        programs.ProgSingleTexture = &ProgOculusTouch;
+        programs.ProgBaseColorPBR = &ProgOculusTouch;
+        programs.ProgSkinnedBaseColorPBR = &ProgOculusTouch;
+        programs.ProgLightMapped = &ProgOculusTouch;
+        programs.ProgBaseColorEmissivePBR = &ProgOculusTouch;
+        programs.ProgSkinnedBaseColorEmissivePBR = &ProgOculusTouch;
+        MaterialParms materials;
+        ControllerModelOculusQuest2TouchRight =
+            LoadModelFile(GuiSys->GetFileSys(), controllerModelFile, programs, materials);
+
+        if (ControllerModelOculusQuest2TouchRight == NULL ||
+            static_cast<int>(ControllerModelOculusQuest2TouchRight->Models.size()) < 1) {
+            ALOGE_FAIL(
+                "Couldn't load Oculus Touch for Oculus Quest Controller Controller right model");
+        }
+
+        for (auto& model : ControllerModelOculusQuest2TouchRight->Models) {
+            auto& gc = model.surfaces[0].surfaceDef.graphicsCommand;
+            gc.UniformData[0].Data = &gc.Textures[0];
+            gc.UniformData[1].Data = &SpecularLightDirection;
+            gc.UniformData[2].Data = &SpecularLightColor;
+            gc.UniformData[3].Data = &AmbientLightColor;
+            gc.UniformData[4].Data = &gc.Textures[1];
+        }
+    }
+
     {
         MaterialParms materialParms;
         materialParms.UseSrgbTextureFormats = false;
@@ -475,7 +539,7 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
     SpriteAtlas->BuildSpritesFromGrid(4, 2, 8);
 
     ParticleSystem = new ovrParticleSystem();
-    ParticleSystem->Init(2048, *SpriteAtlas, ovrParticleSystem::GetDefaultGpuState(), false);
+    ParticleSystem->Init(2048, SpriteAtlas, ovrParticleSystem::GetDefaultGpuState(), false);
 
     BeamAtlas = new ovrTextureAtlas();
     BeamAtlas->Init(GuiSys->GetFileSys(), "apk:///assets/beams.ktx");
@@ -508,6 +572,10 @@ bool ovrVrInput::AppInit(const OVRFW::ovrAppContext* context) {
     LastGamepadUpdateTimeInSeconds = 0.0;
 
     SurfaceRender.Init();
+
+    const ovrJava* java = reinterpret_cast<const ovrJava*>(GetContext()->ContextForVrApi());
+
+    DeviceType = (ovrDeviceType)vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_DEVICE_TYPE);
 
     return true;
 }
@@ -598,8 +666,8 @@ void ovrVrInput::RenderRunningFrame(
     OVRFW::ovrRendererOutput& out) {
     // disallow player movement
     ovrApplFrameIn vrFrameWithoutMove = in;
-    vrFrameWithoutMove.LeftRemote.Joystick.x = 0.0f;
-    vrFrameWithoutMove.LeftRemote.Joystick.y = 0.0f;
+    vrFrameWithoutMove.LeftRemoteJoystick.x = 0.0f;
+    vrFrameWithoutMove.LeftRemoteJoystick.y = 0.0f;
 
     //------------------------------------------------------------------------------------------
 
@@ -665,10 +733,8 @@ void ovrVrInput::RenderRunningFrame(
     //------------------------------------------------------------------------------------------
 
     // if the orientation is tracked by the headset, don't allow the gamepad to rotate the view
-    if ((vrFrameWithoutMove.Tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_TRACKED) != 0) {
-        vrFrameWithoutMove.RightRemote.Joystick.x = 0.0f;
-        vrFrameWithoutMove.RightRemote.Joystick.y = 0.0f;
-    }
+    vrFrameWithoutMove.RightRemoteJoystick.x = 0.0f;
+    vrFrameWithoutMove.RightRemoteJoystick.y = 0.0f;
 
     // Force ignoring motion
     vrFrameWithoutMove.LeftRemoteTracked = false;
@@ -831,7 +897,7 @@ void ovrVrInput::RenderRunningFrame(
 
     // since we don't delete any lines, we don't need to run its frame at all
     RemoteBeamRenderer->Frame(in, out.FrameMatrices.CenterView, *BeamAtlas);
-    ParticleSystem->Frame(in, *SpriteAtlas, out.FrameMatrices.CenterView);
+    ParticleSystem->Frame(in, SpriteAtlas, out.FrameMatrices.CenterView);
 
     GuiSys->AppendSurfaceList(out.FrameMatrices.CenterView, &out.Surfaces);
 
@@ -1093,8 +1159,7 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(ovrInputDevice_TrackedRemote&
     if ((inputTrackedRemoteCapabilities->ControllerCapabilities &
          ovrControllerCaps_ModelOculusTouch) != 0) {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "Oculus Touch Controller");
-    }
-        else {
+    } else {
         SetObjectText(*GuiSys, Menu, headerObjectName.c_str(), "UNKNOWN CONTROLLER TYPE");
     }
 
@@ -1150,7 +1215,16 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(ovrInputDevice_TrackedRemote&
         SetObjectVisible(*GuiSys, Menu, thumbUpObjectName.c_str(), true);
     }
 
-    
+    if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_ThumbRest) {
+        buttonStr += "TmbRst-";
+    }
+    if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_LThumbRest) {
+        buttonStr += "|L| ";
+    }
+    if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_RThumbRest) {
+        buttonStr += "|R| ";
+    }
+
     if (inputTrackedRemoteCapabilities->ButtonCapabilities & ovrButton_Back) {
         buttonStr += "BACK ";
         SetObjectVisible(*GuiSys, Menu, backObjectName.c_str(), true);
@@ -1194,8 +1268,30 @@ ovrResult ovrVrInput::PopulateRemoteControllerInfo(ovrInputDevice_TrackedRemote&
         buttons += "Tmb ";
         SetObjectColor(
             *GuiSys, Menu, thumbUpObjectName.c_str(), Vector4f(1.0f, 0.25f, 0.25f, 1.0f));
+    } else if (remoteInputState.Touches & ovrTouch_ThumbRest) {
+        buttons += "Tmbrst ";
+        SetObjectColor(
+            *GuiSys, Menu, thumbUpObjectName.c_str(), Vector4f(0.25f, 1.0f, 0.25f, 1.0f));
+        if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_LThumbRest) {
+            SetObjectColor(
+                *GuiSys, Menu, thumbUpObjectName.c_str(), Vector4f(0.5f, 1.0f, 0.25f, 1.0f));
+        }
+        if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_RThumbRest) {
+            SetObjectColor(
+                *GuiSys, Menu, thumbUpObjectName.c_str(), Vector4f(0.25f, 1.0f, 0.5f, 1.0f));
+        }
     }
-    
+
+    if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_ThumbRest) {
+        buttonStr += "TmbRst";
+        if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_LThumbRest) {
+            buttonStr += "|L|";
+        }
+        if (inputTrackedRemoteCapabilities->TouchCapabilities & ovrTouch_LThumbRest) {
+            buttonStr += "|R|";
+        }
+    }
+
     Vector4f* hightLightMaskPointer = &HighLightMask;
 
     if (inputTrackedRemoteCapabilities->ControllerCapabilities &
@@ -1499,16 +1595,26 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
                 ovrInputDevice_TrackedRemote& trDevice =
                     *static_cast<ovrInputDevice_TrackedRemote*>(device);
                 std::vector<ovrDrawSurface>& controllerSurfaces = trDevice.GetControllerSurfaces();
-                ModelFile* modelFile = ControllerModelOculusTouchLeft;
-                                    if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
-                        ovrControllerCaps_ModelOculusTouch) {
+                ModelFile* modelFile = ControllerModelOculusQuestTouchLeft;
+
+                if (trDevice.GetTrackedRemoteCaps().ControllerCapabilities &
+                    ovrControllerCaps_ModelOculusTouch) {
+                    if (DeviceType >= VRAPI_DEVICE_TYPE_OCULUSQUEST2_START &&
+                        DeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST2_END) {
                         if (trDevice.GetHand() == ovrArmModel::HAND_LEFT) {
-                            modelFile = ControllerModelOculusTouchLeft;
+                            modelFile = ControllerModelOculusQuest2TouchLeft;
                         } else {
-                            modelFile = ControllerModelOculusTouchRight;
+                            modelFile = ControllerModelOculusQuest2TouchRight;
+                        }
+                    } else {
+                        if (trDevice.GetHand() == ovrArmModel::HAND_LEFT) {
+                            modelFile = ControllerModelOculusQuestTouchLeft;
+                        } else {
+                            modelFile = ControllerModelOculusQuestTouchRight;
                         }
                     }
-                    
+                }
+
                 controllerSurfaces.clear();
                 for (auto& model : modelFile->Models) {
                     ovrDrawSurface controllerSurface;
@@ -1523,7 +1629,7 @@ void ovrVrInput::OnDeviceConnected(const ovrInputCapabilityHeader& capsHeader) {
                          ovrControllerCaps_ModelOculusTouch) != 0) {
                         header->SetText("Oculus Touch Controller");
                     }
-                                    }
+                }
             }
             break;
         }

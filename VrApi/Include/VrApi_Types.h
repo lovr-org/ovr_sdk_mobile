@@ -57,6 +57,8 @@ typedef enum ovrSuccessResult_ {
     ovrSuccess = 0,
     ovrSuccess_BoundaryInvalid = 1001,
     ovrSuccess_EventUnavailable = 1002,
+    ovrSuccess_Skipped = 1003,
+
 } ovrSuccessResult;
 
 typedef enum ovrErrorResult_ {
@@ -72,6 +74,12 @@ typedef enum ovrErrorResult_ {
     ovrError_NoDevice = -1051, //< specified device ID does not map to any current device
     ovrError_NotImplemented = -1052, //< executed an incomplete code path - this should not be
                                      // possible in public releases.
+    /// ovrError_NotReady is returned when a subsystem supporting an API is not yet ready.
+    /// For some subsystems, vrapi_PollEvent will return a ready event once the sub-system is
+    /// available.
+    ovrError_NotReady = -1053,
+    /// Data is unavailable
+    ovrError_Unavailable = -1054,
 
     ovrResult_EnumSize = 0x7fffffff
 } ovrErrorResult;
@@ -162,16 +170,13 @@ typedef enum ovrStructureType_ {
 
 /// A VR-capable device.
 typedef enum ovrDeviceType_ {
-    
-    VRAPI_DEVICE_TYPE_OCULUSQUEST_START = 256,
+        VRAPI_DEVICE_TYPE_OCULUSQUEST_START = 256,
         VRAPI_DEVICE_TYPE_OCULUSQUEST = VRAPI_DEVICE_TYPE_OCULUSQUEST_START + 3,
     VRAPI_DEVICE_TYPE_OCULUSQUEST_END = 319,
-
-    
-    
-    
-    
-    VRAPI_DEVICE_TYPE_UNKNOWN = -1,
+    VRAPI_DEVICE_TYPE_OCULUSQUEST2_START = 320,
+    VRAPI_DEVICE_TYPE_OCULUSQUEST2 = VRAPI_DEVICE_TYPE_OCULUSQUEST2_START,
+    VRAPI_DEVICE_TYPE_OCULUSQUEST2_END = 383,
+                VRAPI_DEVICE_TYPE_UNKNOWN = -1,
 } ovrDeviceType;
 
 /// A geographic region authorized for certain hardware and content.
@@ -180,12 +185,6 @@ typedef enum ovrDeviceRegion_ {
     VRAPI_DEVICE_REGION_JAPAN = 1,
     VRAPI_DEVICE_REGION_CHINA = 2,
 } ovrDeviceRegion;
-
-/// The maximum resolution and framerate supported by a video decoder.
-typedef enum ovrVideoDecoderLimit_ {
-    VRAPI_VIDEO_DECODER_LIMIT_4K_30FPS = 0,
-    VRAPI_VIDEO_DECODER_LIMIT_4K_60FPS = 1,
-} ovrVideoDecoderLimit;
 
 /// Emulation mode for applications developed on different devices
 /// for determining if running in emulation mode at all test against !=
@@ -227,16 +226,8 @@ typedef enum ovrSystemProperty_ {
     /// Currently symmetric 90.0 degrees.
     VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X = 7,
     VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y = 8,
-    // enum 9 used to be VRAPI_SYS_PROP_EXT_SDCARD_PATH.
-    VRAPI_SYS_PROP_DEVICE_REGION = 10,
-    /// Video decoder limit for the device.
-    VRAPI_SYS_PROP_VIDEO_DECODER_LIMIT = 11,
-
-    // enum 12 used to be VRAPI_SYS_PROP_HEADSET_TYPE.
-    // enum 13 used to be VRAPI_SYS_PROP_BACK_BUTTON_SHORTPRESS_TIME.
-    // enum 14 used to be VRAPI_SYS_PROP_BACK_BUTTON_DOUBLETAP_TIME.
-
-    /// Returns an ovrHandedness enum indicating left or right hand.
+        VRAPI_SYS_PROP_DEVICE_REGION = 10,
+        /// Returns an ovrHandedness enum indicating left or right hand.
     VRAPI_SYS_PROP_DOMINANT_HAND = 15,
 
     /// Returns VRAPI_TRUE if the system supports orientation tracking.
@@ -255,11 +246,7 @@ typedef enum ovrSystemProperty_ {
     /// Formats are platform specific. For GLES, this is an array of
     /// GL internal formats.
     VRAPI_SYS_PROP_SUPPORTED_SWAPCHAIN_FORMATS = 67,
-
-    /// enum 128 used to be VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE.
-    /// enum 129 used to be VRAPI_SYS_PROP_SRGB_LAYER_SOURCE_AVAILABLE.
-
-    /// Returns VRAPI_TRUE if on-chip foveated rendering of swapchains is supported
+        /// Returns VRAPI_TRUE if on-chip foveated rendering of swapchains is supported
     /// for this system, otherwise VRAPI_FALSE.
     VRAPI_SYS_PROP_FOVEATION_AVAILABLE = 130,
     } ovrSystemProperty;
@@ -305,7 +292,7 @@ typedef enum ovrSystemStatus_ {
     // enum 12 used to be VRAPI_SYS_STATUS_HEADPHONES_PLUGGED_IN
 
     VRAPI_SYS_STATUS_RECENTER_COUNT = 13, //< Returns the current HMD recenter count. Defaults to 0.
-    VRAPI_SYS_STATUS_SYSTEM_UX_ACTIVE = 14, //< Returns VRAPI_TRUE if a system UX layer is active
+    // enum 14 used to be VRAPI_SYS_STATUS_SYSTEM_UX_ACTIVE
     VRAPI_SYS_STATUS_USER_RECENTER_COUNT = 15, //< Returns the current HMD recenter count for user
                                                // initiated recenters only. Defaults to 0.
 
@@ -405,7 +392,8 @@ typedef enum ovrModeFlags_ {
     /// https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_create_context_no_error.txt
     VRAPI_MODE_FLAG_CREATE_CONTEXT_NO_ERROR = 0x00100000,
 
-    } ovrModeFlags;
+    
+} ovrModeFlags;
 
 /// Configuration details that stay constant between a vrapi_EnterVrMode()/vrapi_LeaveVrMode() pair.
 typedef struct ovrModeParms_ {
@@ -503,6 +491,7 @@ typedef struct ovrTracking2_ {
 } ovrTracking2;
 
 OVR_VRAPI_ASSERT_TYPE_SIZE(ovrTracking2, 360);
+
 
 /// Reports the status and pose of a motion tracker.
 typedef struct ovrTracking_ {
@@ -899,11 +888,12 @@ typedef enum ovrLayerType2_ {
     VRAPI_LAYER_TYPE_LOADING_ICON2 = 6,
     VRAPI_LAYER_TYPE_FISHEYE2 = 7,
         VRAPI_LAYER_TYPE_EQUIRECT3 = 10,
-} ovrLayerType2;
+    } ovrLayerType2;
 
 /// Properties shared by any type of layer.
 typedef struct ovrLayerHeader2_ {
     ovrLayerType2 Type;
+    /// Combination of ovrFrameLayerFlags flags.
     uint32_t Flags;
 
     ovrVector4f ColorScale;
@@ -935,6 +925,7 @@ typedef struct ovrLayerProjection2_ {
 
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerProjection2, 312);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerProjection2, 328);
+
 
 
 /// ovrLayerCylinder2 provides support for a single 2D texture projected onto a cylinder shape.
@@ -1329,7 +1320,9 @@ typedef enum ovrEventType_ {
     // The current activity is in the background (but possibly still visible) and has lost input
     // focus.
     VRAPI_EVENT_FOCUS_LOST = 5,
-        } ovrEventType;
+            // The display refresh rate has changed
+    VRAPI_EVENT_DISPLAY_REFRESH_RATE_CHANGE = 11,
+} ovrEventType;
 
 typedef struct ovrEventHeader_ {
     ovrEventType EventType;
@@ -1360,12 +1353,20 @@ typedef struct ovrEventFocusLost_ {
     ovrEventHeader EventHeader;
 } ovrEventFocusLost;
 
+// Event structure for VRAPI_EVENT_DISPLAY_REFRESH_RATE_CHANGE
+typedef struct ovrEventDisplayRefreshRateChange_ {
+    ovrEventHeader EventHeader;
+    float fromDisplayRefreshRate;
+    float toDisplayRefreshRate;
+} ovrEventDisplayRefreshRateChange;
+
 
 
 typedef struct ovrEventDataBuffer_ {
     ovrEventHeader EventHeader;
     unsigned char EventData[4000];
 } ovrEventDataBuffer;
+
 
 #define VRAPI_LARGEST_EVENT_TYPE ovrEventDataBuffer
 

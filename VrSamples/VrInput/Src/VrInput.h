@@ -226,9 +226,11 @@ class ovrVrInput : public OVRFW::ovrAppl {
 
     GlProgram ProgOculusTouch;
 
-    ModelFile* ControllerModelOculusTouchLeft;
-    ModelFile* ControllerModelOculusTouchRight;
-    
+    ModelFile* ControllerModelOculusQuestTouchLeft;
+    ModelFile* ControllerModelOculusQuestTouchRight;
+    ModelFile* ControllerModelOculusQuest2TouchLeft;
+    ModelFile* ControllerModelOculusQuest2TouchRight;
+
     OVR::Vector3f SpecularLightDirection;
     OVR::Vector3f SpecularLightColor;
     OVR::Vector3f AmbientLightColor;
@@ -252,6 +254,8 @@ class ovrVrInput : public OVRFW::ovrAppl {
     uint32_t ActiveInputDeviceID;
 
     OVRFW::ovrSurfaceRender SurfaceRender;
+
+    ovrDeviceType DeviceType;
 
    private:
     void ClearAndHideMenuItems();

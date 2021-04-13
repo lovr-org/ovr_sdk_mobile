@@ -177,15 +177,15 @@ float VrCubeWorld::RandomFloat() {
 }
 
 bool VrCubeWorld::AppInit(const OVRFW::ovrAppContext* context) {
-    const ovrJava* java = reinterpret_cast<const ovrJava*>(context->ContextForVrApi());
-
-    FileSys = ovrFileSys::Create(*java);
+    const ovrJava& jj = *(reinterpret_cast<const ovrJava*>(context->ContextForVrApi()));
+    const xrJava ctx = JavaContextConvert(jj);
+    FileSys = OVRFW::ovrFileSys::Create(ctx);
     if (nullptr == FileSys) {
         ALOGE("Couldn't create FileSys");
         return false;
     }
 
-    Locale = ovrLocale::Create(*java->Env, java->ActivityObject, "default");
+    Locale = ovrLocale::Create(*ctx.Env, ctx.ActivityObject, "default");
     if (nullptr == Locale) {
         ALOGE("Couldn't create Locale");
         return false;
@@ -197,7 +197,7 @@ bool VrCubeWorld::AppInit(const OVRFW::ovrAppContext* context) {
         return false;
     }
 
-    GuiSys = OvrGuiSys::Create(context);
+    GuiSys = OvrGuiSys::Create(&ctx);
     if (nullptr == GuiSys) {
         ALOGE("Couldn't create GUI");
         return false;
@@ -401,7 +401,7 @@ OVRFW::ovrApplFrameOut VrCubeWorld::AppFrame(const OVRFW::ovrApplFrameIn& vrFram
     GL(glUnmapBuffer(GL_ARRAY_BUFFER));
     GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
-    CenterEyeViewMatrix = vrapi_GetViewMatrixFromPose(&vrFrame.Tracking.HeadPose.Pose);
+    CenterEyeViewMatrix = OVR::Matrix4f(vrFrame.HeadPose);
 
     // Update GUI systems last, but before rendering anything.
     GuiSys->Frame(vrFrame, CenterEyeViewMatrix);
@@ -419,7 +419,7 @@ void VrCubeWorld::AppRenderFrame(const OVRFW::ovrApplFrameIn& in, OVRFW::ovrRend
                 /// Frame matrices
                 out.FrameMatrices.CenterView = CenterEyeViewMatrix;
                 for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-                    out.FrameMatrices.EyeView[eye] = in.Tracking.Eye[eye].ViewMatrix;
+                    out.FrameMatrices.EyeView[eye] = in.Eye[eye].ViewMatrix;
                     // Calculate projection matrix using custom near plane value.
                     out.FrameMatrices.EyeProjection[eye] = ovrMatrix4f_CreateProjectionFov(
                         SuggestedEyeFovDegreesX, SuggestedEyeFovDegreesY, 0.0f, 0.0f, 0.1f, 0.0f);
