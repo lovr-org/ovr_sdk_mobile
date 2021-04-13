@@ -87,14 +87,18 @@ void ovrAxisRenderer::Shutdown() {
 }
 
 void ovrAxisRenderer::Update(const std::vector<OVR::Posef>& points) {
-    if (points.size() > Count) {
-        Count = points.size();
+    Update(points.data(), points.size());
+}
+
+void ovrAxisRenderer::Update(const OVR::Posef* points, size_t count) {
+    if (count > Count) {
+        Count = count;
         TransformMatrices.resize(Count, OVR::Matrix4f::Identity());
         InstancedBoneUniformBuffer.Destroy();
         InstancedBoneUniformBuffer.Create(
             GLBUFFER_TYPE_UNIFORM, Count * sizeof(Matrix4f), TransformMatrices.data());
     }
-    for (size_t j = 0; j < points.size(); ++j) {
+    for (size_t j = 0; j < count; ++j) {
         /// Compute transform
         OVR::Matrix4f t(points[j]);
         TransformMatrices[j] = t.Transposed();

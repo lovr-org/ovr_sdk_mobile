@@ -297,8 +297,6 @@ typedef enum ovrSystemStatus_ {
                                                // initiated recenters only. Defaults to 0.
 
     
-    VRAPI_SYS_STATUS_FRONT_BUFFER_PROTECTED =
-        128, //< VRAPI_TRUE if the front buffer is allocated in TrustZone memory.
         VRAPI_SYS_STATUS_FRONT_BUFFER_SRGB =
         130, //< VRAPI_TRUE if the front buffer uses the sRGB color space.
 
@@ -378,11 +376,6 @@ typedef enum ovrModeFlags_ {
     /// The WindowSurface passed in is an ANativeWindow.
     VRAPI_MODE_FLAG_NATIVE_WINDOW = 0x00010000,
 
-    /// Create the front buffer in TrustZone memory to allow protected DRM
-    /// content to be rendered to the front buffer. This functionality
-    /// requires the WindowSurface to be allocated from TimeWarp, via
-    /// specifying the nativeWindow via VRAPI_MODE_FLAG_NATIVE_WINDOW.
-    VRAPI_MODE_FLAG_FRONT_BUFFER_PROTECTED = 0x00020000,
         /// Create a front buffer using the sRGB color space.
     VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB = 0x00080000,
 
@@ -582,6 +575,21 @@ typedef enum ovrTextureFormat_ {
     } ovrTextureFormat;
 
 
+/// Flags supported by vrapi_CreateAndroidSurfaceSwapChain3
+typedef enum ovrAndroidSurfaceSwapChainFlags_ {
+    /// Create a protected surface, suitable for secure video playback.
+    VRAPI_ANDROID_SURFACE_SWAP_CHAIN_FLAG_PROTECTED = 0x1,
+    /// Create the underlying BufferQueue in synchronous mode, allowing multiple buffers to be
+    /// queued instead of always replacing the last buffer.  Buffers are retired in order, and
+    /// the producer may block until a new buffer is available.
+    VRAPI_ANDROID_SURFACE_SWAP_CHAIN_FLAG_SYNCHRONOUS = 0x2,
+    /// Indicates that the compositor should acquire the most recent buffer whose presentation
+    /// timestamp is not greater than the expected display time of the final composited frame.
+    /// Together with FLAG_SYNCHRONOUS, this flag is suitable for video surfaces where several
+    /// frames can be queued ahead of time.
+    VRAPI_ANDROID_SURFACE_SWAP_CHAIN_FLAG_USE_TIMESTAMPS = 0x4,
+} ovrAndroidSurfaceSwapChainFlags;
+
 /// Built-in convenience swapchains.
 typedef enum ovrDefaultTextureSwapChain_ {
     VRAPI_DEFAULT_TEXTURE_SWAPCHAIN = 0x1,
@@ -679,7 +687,7 @@ typedef enum ovrFrameLayerFlags_ {
     VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION = 1 << 1,
     /// Used for some HUDs, but generally considered bad practice.
     VRAPI_FRAME_LAYER_FLAG_FIXED_TO_VIEW = 1 << 2,
-    /// Spin the layer - for loading icons
+    /// \deprecated Spin the layer - for loading icons
     VRAPI_FRAME_LAYER_FLAG_SPIN = 1 << 3,
     /// Clip fragments outside the layer's TextureRect
     VRAPI_FRAME_LAYER_FLAG_CLIP_TO_TEXTURE_RECT = 1 << 4,
@@ -737,7 +745,8 @@ typedef enum ovrExtraLatencyMode_ {
 
 /// \deprecated The vrapi_SubmitFrame2 path with flexible layer types
 /// should be used instead.
-typedef enum ovrFrameLayerType_ { VRAPI_FRAME_LAYER_TYPE_MAX = 4 } ovrFrameLayerType;
+OVR_VRAPI_DEPRECATED(typedef enum ovrFrameLayerType_{
+    VRAPI_FRAME_LAYER_TYPE_MAX = 4} ovrFrameLayerType);
 
 /// A compositor layer.
 /// \note Any layer textures that are dynamic must be triple buffered.
@@ -831,7 +840,7 @@ OVR_VRAPI_ASSERT_TYPE_SIZE(ovrPerformanceParms, 16);
 /// Per-frame details.
 /// \deprecated The vrapi_SubmitFrame2 path with flexible layer types
 /// should be used instead.
-typedef struct ovrFrameParms_ {
+OVR_VRAPI_DEPRECATED(typedef struct ovrFrameParms_ {
     ovrStructureType Type;
 
     OVR_VRAPI_PADDING(4)
@@ -868,10 +877,10 @@ typedef struct ovrFrameParms_ {
 
     /// For handling HMD events and power level state changes.
     ovrJava Java;
-} ovrFrameParms;
+} ovrFrameParms);
 
-OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrFrameParms, 1856);
-OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrFrameParms, 1936);
+// OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrFrameParms, 1856);
+// OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrFrameParms, 1936);
 
 //-------------------------------------
 // Flexible Layer Type structures for vrapi_SubmitFrame2.
@@ -889,6 +898,7 @@ typedef enum ovrLayerType2_ {
     VRAPI_LAYER_TYPE_FISHEYE2 = 7,
         VRAPI_LAYER_TYPE_EQUIRECT3 = 10,
     } ovrLayerType2;
+
 
 /// Properties shared by any type of layer.
 typedef struct ovrLayerHeader2_ {
@@ -925,6 +935,7 @@ typedef struct ovrLayerProjection2_ {
 
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerProjection2, 312);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerProjection2, 328);
+
 
 
 
@@ -1174,6 +1185,7 @@ typedef struct ovrLayerFishEye2_ {
 
 OVR_VRAPI_ASSERT_TYPE_SIZE_32_BIT(ovrLayerFishEye2, 472);
 OVR_VRAPI_ASSERT_TYPE_SIZE_64_BIT(ovrLayerFishEye2, 488);
+
 
 
 /// Union that combines ovrLayer types in a way that allows them

@@ -163,7 +163,7 @@ bool ovrAppl::Init(const ovrAppContext* context, const ovrInitParms* initParms) 
         ovrFramebuffer_Create(
             Framebuffer[eye].get(),
             UseMultiView,
-            GL_RGBA8,
+            GL_SRGB8_ALPHA8,
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH),
             vrapi_GetSystemPropertyInt(java, VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT),
             NUM_MULTI_SAMPLES);
@@ -210,11 +210,9 @@ SubmitLoadingIcon(ovrMobile* sessionObject, const uint64_t frameIndex, const dou
 
     // black layer
     ovrLayerProjection2 blackLayer = vrapi_DefaultLayerBlackProjection2();
-    blackLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
     layers[0].Projection = blackLayer;
     // loading icon layer
     ovrLayerLoadingIcon2 iconLayer = vrapi_DefaultLayerLoadingIcon2();
-    iconLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
     layers[1].LoadingIcon = iconLayer;
 
     const ovrLayerHeader2* layerPtrs[ovrMaxLayerCount] = {&layers[0].Header, &layers[1].Header};
@@ -243,6 +241,7 @@ void ovrAppl::HandleLifecycle(const ovrAppContext* context) {
 
             modeParms.Flags &= ~VRAPI_MODE_FLAG_RESET_WINDOW_FULLSCREEN;
             modeParms.Flags |= VRAPI_MODE_FLAG_NATIVE_WINDOW;
+            modeParms.Flags |= VRAPI_MODE_FLAG_FRONT_BUFFER_SRGB;
             modeParms.Display = (size_t)Egl.Display;
             modeParms.WindowSurface = (size_t)Window;
             modeParms.ShareContext = (size_t)Egl.Context;
@@ -620,6 +619,10 @@ void ovrAppl::AppRenderEye(
     ovrRendererOutput& /* out */,
     int /* eye */) {}
 
+#ifndef GL_FRAMEBUFFER_SRGB_EXT
+#define GL_FRAMEBUFFER_SRGB_EXT 0x8DB9
+#endif
+
 void ovrAppl::AppEyeGLStateSetup(
     const ovrApplFrameIn& /* in */,
     const ovrFramebuffer* fb,
@@ -631,8 +634,10 @@ void ovrAppl::AppEyeGLStateSetup(
     GL(glEnable(GL_CULL_FACE));
     GL(glViewport(0, 0, fb->Width, fb->Height));
     GL(glScissor(0, 0, fb->Width, fb->Height));
-    GL(glClearColor(0.125f, 0.0f, 0.125f, 1.0f));
+    GL(glClearColor(0.016f, 0.0f, 0.016f, 1.0f));
+    GL(glEnable(GL_FRAMEBUFFER_SRGB_EXT));
     GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL(glDisable(GL_FRAMEBUFFER_SRGB_EXT));
 }
 
 void ovrAppl::DefaultRenderFrame_Loading(const ovrApplFrameIn& in, ovrRendererOutput& out) {
@@ -640,11 +645,9 @@ void ovrAppl::DefaultRenderFrame_Loading(const ovrApplFrameIn& in, ovrRendererOu
     FrameFlags = 0u;
     // black layer
     ovrLayerProjection2 blackLayer = vrapi_DefaultLayerBlackProjection2();
-    blackLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
     Layers[NumLayers++].Projection = blackLayer;
     // loading icon layer
     ovrLayerLoadingIcon2 iconLayer = vrapi_DefaultLayerLoadingIcon2();
-    iconLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
     Layers[NumLayers++].LoadingIcon = iconLayer;
     FrameFlags |= VRAPI_FRAME_FLAG_FLUSH;
 }
@@ -687,7 +690,6 @@ void ovrAppl::DefaultRenderFrame_Ending(const ovrApplFrameIn& in, ovrRendererOut
     NumLayers = 0;
     FrameFlags = 0u;
     ovrLayerProjection2 layer = vrapi_DefaultLayerBlackProjection2();
-    layer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
     Layers[NumLayers++].Projection = layer;
     FrameFlags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
 }

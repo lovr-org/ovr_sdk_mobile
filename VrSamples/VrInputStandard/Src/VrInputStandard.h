@@ -412,25 +412,25 @@ class ovrInputDeviceStandardPointer : public ovrInputDeviceHandBase {
     virtual const char* GetName() const override {
         return "StandardPointerDevice";
     }
-    const ovrInputStandardPointerCapabilities& GetGenericDeviceCaps() const {
+    const ovrInputStandardPointerCapabilities& GetStandardDeviceCaps() const {
         return Caps;
     }
 
     bool Update(ovrMobile* ovr, const double displayTimeInSeconds, const float dt) override;
 
     virtual bool HasCapSimpleHaptics() const override {
-        return GetGenericDeviceCaps().ControllerCapabilities &
+        return GetStandardDeviceCaps().ControllerCapabilities &
             ovrControllerCaps_HasSimpleHapticVibration;
     }
     virtual bool HasCapBufferedHaptics() const override {
-        return GetGenericDeviceCaps().ControllerCapabilities &
+        return GetStandardDeviceCaps().ControllerCapabilities &
             ovrControllerCaps_HasBufferedHapticVibration;
     }
     virtual float GetHapticSampleDurationMS() const override {
-        return GetGenericDeviceCaps().HapticSampleDurationMS;
+        return GetStandardDeviceCaps().HapticSampleDurationMS;
     }
     virtual uint32_t GetHapticSamplesMax() const override {
-        return GetGenericDeviceCaps().HapticSamplesMax;
+        return GetStandardDeviceCaps().HapticSamplesMax;
     }
 
     bool IsPinching() const override {

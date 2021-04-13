@@ -37,6 +37,9 @@ class ovrStream {
     // Closes the currently open stream.
     void Close();
 
+    // Flushes the stream
+    void Flush();
+
     bool GetLocalPathFromUri(const char* uri, std::string& outputPath);
 
     // Reads the specified number of bytes from the stream into outBuffer.
@@ -83,6 +86,7 @@ class ovrStream {
     virtual bool GetLocalPathFromUri_Internal(const char* uri, std::string& outputPath) = 0;
     virtual bool Open_Internal(char const* Uri, ovrStreamMode const mode) = 0;
     virtual void Close_Internal() = 0;
+    virtual void Flush_Internal() = 0;
     virtual bool Read_Internal(
         std::vector<uint8_t>& outBuffer,
         size_t const bytesToRead,

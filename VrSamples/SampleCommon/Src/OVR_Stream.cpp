@@ -251,6 +251,12 @@ void ovrStream::Close() {
 }
 
 //==============================
+// ovrStream::Flush
+void ovrStream::Flush() {
+    Flush_Internal();
+}
+
+//==============================
 // ovrStream::GetLocalPathFromUri
 bool ovrStream::GetLocalPathFromUri(const char* uri, std::string& outputPath) {
     return GetLocalPathFromUri_Internal(uri, outputPath);
@@ -662,6 +668,14 @@ void ovrStream_File::Close_Internal() {
 }
 
 //==============================
+// ovrStream_File::Flush_Internal
+void ovrStream_File::Flush_Internal() {
+    if (F != NULL) {
+        fflush(F);
+    }
+}
+
+//==============================
 // ovrStream_File::Read_Internal
 bool ovrStream_File::Read_Internal(
     std::vector<uint8_t>& outBuffer,
@@ -955,6 +969,12 @@ bool ovrStream_Apk::Open_Internal(char const* uri, ovrStreamMode const mode) {
 // ovrStream_Apk::Close_Internal
 void ovrStream_Apk::Close_Internal() {
     IsOpen = false;
+}
+
+//==============================
+// ovrStream_Apk::Flush_Internal
+void ovrStream_Apk::Flush_Internal() {
+    // no-op
 }
 
 //==============================
