@@ -14,6 +14,17 @@ For documentation on developing for Oculus devices that use Android, see our [Mo
 
 For details on migrating to Mobile SDK 25.0 (API 1.42) from previous versions, see the [Mobile SDK Migration Guide](https://developer.oculus.com/documentation/native/android/mobile-native-migration/).
 
+# Contributing to this repo
+
+When there's an update to the SDK, a new commit can be added to this repo thusly:
+
+1. Head over to [the SDK site](https://developer.oculus.com/downloads/package/oculus-mobile-sdk/) and download the zip.
+2. `rm` all non-dotfiles in this repo except this README
+3. Unzip the zip into this folder
+4. Remove the annoying and big files: `find . -name '*.ktx' -o -name '*.mp4' | xargs rm`
+5. Add an entry to 'Version History' below, copy-pasting from the SDK site
+6. Make a nice commit and push away
+
 # Version history
 
 ## Oculus Mobile SDK 25.0 (API 1.42.0) (2021-02-19)
