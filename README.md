@@ -4,6 +4,9 @@ This is a Git mirror of Oculus'
 [Android SDK](https://developer.oculus.com/downloads/package/oculus-mobile-sdk/), 
 provided so that it can be git submodule'd into other projects.
 
+The VrSamples directory has been removed to keep file sizes small. If you wish to
+use the sample code, please download the ZIP directly from Oculus.
+
 You must still agree to Oculus' licensing terms to use it.
 
 # About
@@ -21,7 +24,7 @@ When there's an update to the SDK, a new commit can be added to this repo thusly
 1. Head over to [the SDK site](https://developer.oculus.com/downloads/package/oculus-mobile-sdk/) and download the zip.
 2. `rm` all non-dotfiles in this repo except this README
 3. Unzip the zip into this folder
-4. Remove the annoying and big files: `find . -name '*.ktx' -o -name '*.mp4' | xargs rm`
+4. Remove VrSamples to get the repo size down.
 5. Add an entry to 'Version History' below, copy-pasting from the SDK site
 6. Make a nice commit and push away
 
